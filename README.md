@@ -61,6 +61,13 @@ The system implements a comprehensive **2026-27 Trading Strategy** that combines
 
 ## 🏗️ System Architecture
 
+<div align="center">
+
+![Flowchart](assets\img\SYSTEM_FLOWCHART_HIGH_RES.png)
+
+
+</div>
+
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed flowchart and component diagrams.
 
 ### High-Level Flow
