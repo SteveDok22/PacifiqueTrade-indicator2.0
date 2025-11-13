@@ -132,3 +132,50 @@ class TrailingStopManager:
                 )
         
         return None
+    
+    def _move_to_breakeven(
+        self,
+        direction: str,
+        entry_price: float,
+        current_stop: float
+    ) -> Optional[float]:
+        """Move stop to breakeven (entry price)"""
+        
+        if direction == 'long':
+            # Only move if current stop is below entry
+            if current_stop < entry_price:
+                logger.info(f"Moving SL to breakeven: {current_stop:.5f} → {entry_price:.5f}")
+                return entry_price
+        else:  # short
+            # Only move if current stop is above entry
+            if current_stop > entry_price:
+                logger.info(f"Moving SL to breakeven: {current_stop:.5f} → {entry_price:.5f}")
+                return entry_price
+        
+        return None
+    
+    def _move_to_plus_1r(
+        self,
+        direction: str,
+        entry_price: float,
+        current_stop: float
+    ) -> Optional[float]:
+        """Move stop to +1R (lock in minimum profit)"""
+        
+        # Calculate +1R level
+        stop_distance = abs(entry_price - current_stop)
+        
+        if direction == 'long':
+            plus_1r = entry_price + stop_distance
+            
+            if current_stop < plus_1r:
+                logger.info(f"Moving SL to +1R: {current_stop:.5f} → {plus_1r:.5f}")
+                return plus_1r
+        else:  # short
+            plus_1r = entry_price - stop_distance
+            
+            if current_stop > plus_1r:
+                logger.info(f"Moving SL to +1R: {current_stop:.5f} → {plus_1r:.5f}")
+                return plus_1r
+        
+        return None
