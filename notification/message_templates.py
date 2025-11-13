@@ -194,3 +194,67 @@ class MessageFormatter:
         return message.strip()
     
     @staticmethod
+    def format_entry_cancelled(
+        pair: str,
+        direction: str,
+        cancellation_reason: str
+    ) -> str:
+        """
+        Format entry cancellation (T-0, after market open)
+        
+        Market didn't confirm, cancel the trade
+        """
+        message = f"""
+❌ <b>SIGNAL CANCELLED</b> ❌
+
+📊 <b>Pair:</b> {pair}
+📍 <b>Direction:</b> {direction.upper()}
+
+⚠️ <b>Reason:</b> {cancellation_reason}
+
+💡 <b>Action:</b> DO NOT ENTER
+🔍 <b>Status:</b> Wait for next opportunity
+
+Remember: Not every signal becomes a trade. We only take HIGH PROBABILITY setups!
+"""
+        return message.strip()
+    
+    @staticmethod
+    def format_position_update(
+        pair: str,
+        direction: str,
+        entry_price: float,
+        current_price: float,
+        current_profit_pips: float,
+        current_profit_usd: float,
+        r_multiple: float,
+        next_tp: float,
+        action: str
+    ) -> str:
+        """
+        Format position update (during trade)
+        
+        Updates on TP hits and trailing stops
+        """
+        profit_emoji = "📈" if current_profit_pips > 0 else "📉"
+        
+        message = f"""
+{profit_emoji} <b>POSITION UPDATE</b> {profit_emoji}
+
+📊 <b>Pair:</b> {pair} ({direction.upper()})
+
+💰 <b>Current Status:</b>
+  • Entry: {entry_price:.5f}
+  • Current: {current_price:.5f}
+  • Profit: {current_profit_pips:.1f} pips (${current_profit_usd:.2f})
+  • R-Multiple: +{r_multiple:.1f}R
+
+🎯 <b>Next Target:</b> {next_tp:.5f}
+
+✅ <b>Action Taken:</b> {action}
+
+💡 Keep monitoring. Let profits run!
+"""
+        return message.strip()
+    
+    @staticmethod
