@@ -182,3 +182,32 @@ class TelegramNotifier:
         )
         
         return await self.send_message(message)
+    
+    async def send_technical_confirmation(
+        self,
+        pair: str,
+        fundamental_direction: str,
+        trend_h4: Dict,
+        trend_h1: Dict,
+        confirms: bool
+    ) -> bool:
+        """Send technical confirmation alert (T-2h)"""
+        
+        if AlertLevel.TECHNICAL_CONFIRM not in self.enabled_alerts:
+            logger.debug("Technical confirmation alerts disabled")
+            return False
+        
+        message = self.formatter.format_technical_confirmation(
+            pair=pair,
+            fundamental_direction=fundamental_direction,
+            trend_h4=trend_h4['direction'],
+            trend_h1=trend_h1['direction'],
+            h4_strength=trend_h4['strength'],
+            h1_strength=trend_h1['strength'],
+            ema50_h4=trend_h4['ema50'],
+            ema200_h4=trend_h4['ema200'],
+            current_price=trend_h4['current_price'],
+            confirms_fundamental=confirms
+        )
+        
+        return await self.send_message(message)
