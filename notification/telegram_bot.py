@@ -211,3 +211,48 @@ class TelegramNotifier:
         )
         
         return await self.send_message(message)
+    
+    async def send_ready_to_trade(
+        self,
+        signal: Dict,
+        with_buttons: bool = True
+    ) -> bool:
+        """
+        Send ready to trade alert (T-15min)
+        
+        THE MAIN ALERT - Includes interactive buttons
+        """
+        if AlertLevel.READY_TO_TRADE not in self.enabled_alerts:
+            logger.debug("Ready to trade alerts disabled")
+            return False
+        
+        message = self.formatter.format_ready_to_trade(
+            pair=signal['pair'],
+            direction=signal['direction'],
+            strength=signal['strength'],
+            entry_price=signal['entry_price'],
+            stop_loss=signal['stop_loss'],
+            take_profit_1=signal['tp1'],
+            take_profit_2=signal['tp2'],
+            take_profit_3=signal['tp3'],
+            position_size_lots=signal['position_size_lots'],
+            risk_amount=signal['risk_amount'],
+            risk_reward=signal['risk_reward'],
+            entry_zone_type=signal.get('entry_zone_type'),
+            entry_zone_level=signal.get('entry_zone_level')
+        )
+        
+        # Add interactive buttons
+        keyboard = None
+        if with_buttons:
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ Will Take", callback_data=f"accept_{signal['pair']}"),
+                    InlineKeyboardButton("❌ Will Skip", callback_data=f"reject_{signal['pair']}")
+                ],
+                [
+                    InlineKeyboardButton("📊 Chart", url=f"https://www.tradingview.com/chart/?symbol={signal['pair'].replace('/', '')}")
+                ]
+            ])
+        
+        return await self.send_message(message, reply_markup=keyboard)
