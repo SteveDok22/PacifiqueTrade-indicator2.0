@@ -65,3 +65,70 @@ class TrailingStopManager:
     
     Never moves stop loss against us (only in profit direction).
     """
+    
+     def __init__(self):
+        pass
+    
+    def should_update_stop(
+        self,
+        direction: str,
+        entry_price: float,
+        current_price: float,
+        current_stop: float,
+        r_achieved: float,
+        ema21: Optional[float] = None
+    ) -> Optional[TrailingStopUpdate]:
+        """
+        Check if stop loss should be updated
+        
+        Args:
+            direction: 'long' or 'short'
+            entry_price: Original entry price
+            current_price: Current market price
+            current_stop: Current stop loss level
+            r_achieved: R-multiple achieved (e.g., 1.5 = +1.5R)
+            ema21: Optional EMA21 value for trailing
+            
+        Returns:
+            TrailingStopUpdate if stop should be moved, None otherwise
+        """
+        logger.debug(f"Checking trailing stop: direction={direction}, "
+                    f"price={current_price:.5f}, R={r_achieved:.1f}")
+        
+        # Rule 1: At +1R, move to breakeven
+        if 0.9 <= r_achieved < 1.5:
+            new_stop = self._move_to_breakeven(
+                direction, entry_price, current_stop
+            )
+            
+            if new_stop and new_stop != current_stop:
+                return self._create_update(
+                    direction, current_price, current_stop, new_stop,
+                    "Moved to breakeven at +1R", entry_price
+                )
+        
+        # Rule 2: At +2R, move SL to +1R
+        elif 1.5 <= r_achieved < 2.5:
+            new_stop = self._move_to_plus_1r(
+                direction, entry_price, current_stop
+            )
+            
+            if new_stop and new_stop != current_stop:
+                return self._create_update(
+                    direction, current_price, current_stop, new_stop,
+                    "Moved to +1R at +2R achieved", entry_price
+                )
+        
+        # Rule 3: Beyond +2R, trail by EMA21 or swing points
+        elif r_achieved >= 2.5:
+            new_stop = self._trail_by_ema_or_swing(
+                direction, current_price, current_stop, ema21
+            )
+            
+            if new_stop and new_stop != current_stop:
+                return self._create_update(
+                    direction, current_price, current_stop, new_stop,
+                    "Trailing stop by EMA21/swing", entry_price
+                )
+        
+        return None
