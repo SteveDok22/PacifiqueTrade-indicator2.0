@@ -159,3 +159,26 @@ class TelegramNotifier:
         
         logger.error(f"Failed to send message after {retry_count} attempts")
         return False
+    
+    async def send_pre_market_alert(
+        self,
+        pair: str,
+        fundamental_signal: Dict
+    ) -> bool:
+        """Send pre-market alert (T-4h)"""
+        
+        if AlertLevel.PRE_MARKET not in self.enabled_alerts:
+            logger.debug("Pre-market alerts disabled")
+            return False
+        
+        message = self.formatter.format_pre_market_alert(
+            pair=pair,
+            fundamental_direction=fundamental_signal['direction'],
+            event_name=fundamental_signal['event_name'],
+            forecast=fundamental_signal.get('forecast', 'N/A'),
+            previous=fundamental_signal.get('previous', 'N/A'),
+            impact=fundamental_signal['impact'],
+            time_to_open=fundamental_signal.get('time_to_open', '4 hours')
+        )
+        
+        return await self.send_message(message)
