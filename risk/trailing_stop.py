@@ -231,3 +231,56 @@ class TrailingStopManager:
                     return new_stop
         
         return None
+    
+    def _create_update(
+        self,
+        direction: str,
+        current_price: float,
+        old_stop: float,
+        new_stop: float,
+        reason: str,
+        entry_price: float
+    ) -> TrailingStopUpdate:
+        """Create a TrailingStopUpdate object"""
+        
+        # Calculate profit locked (in price points, will convert to pips later)
+        if direction == 'long':
+            profit_locked = new_stop - entry_price
+        else:
+            profit_locked = entry_price - new_stop
+        
+        return TrailingStopUpdate(
+            pair=None,  # Will be set by caller
+            direction=direction,
+            current_price=current_price,
+            old_stop=old_stop,
+            new_stop=new_stop,
+            reason=reason,
+            timestamp=datetime.now(),
+            profit_locked=profit_locked
+        )
+    
+    def calculate_r_multiple(
+        self,
+        direction: str,
+        entry_price: float,
+        current_price: float,
+        stop_loss: float
+    ) -> float:
+        """
+        Calculate current R-multiple achieved
+        
+        R-multiple = (Current Profit) / (Initial Risk)
+        """
+        initial_risk = abs(entry_price - stop_loss)
+        
+        if direction == 'long':
+            current_profit = current_price - entry_price
+        else:
+            current_profit = entry_price - current_price
+        
+        if initial_risk == 0:
+            return 0.0
+        
+        r_multiple = current_profit / initial_risk
+        return r_multiple
