@@ -349,3 +349,96 @@ class TelegramNotifier:
         )
         
         return await self.send_message(message)
+    
+def main():
+    """Test Telegram bot"""
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    print("\n" + "="*60)
+    print("TELEGRAM BOT TEST")
+    print("="*60 + "\n")
+    
+    if not TELEGRAM_AVAILABLE:
+        print("❌ python-telegram-bot not installed")
+        print("   Install with: pip install python-telegram-bot")
+        return 1
+    
+    if not config.TELEGRAM_ENABLED:
+        print("❌ Telegram is disabled in .env")
+        print("   Set TELEGRAM_ENABLED=true in .env file")
+        return 1
+    
+    try:
+        notifier = TelegramNotifier()
+        
+        if not notifier.is_enabled():
+            print("❌ Telegram notifier not enabled")
+            print("   Check your .env file configuration")
+            return 1
+        
+        print("✅ Telegram notifier initialized\n")
+        
+        # Test 1: Send simple status message
+        print("Test 1: Sending status message...")
+        
+        async def test_status():
+            success = await notifier.send_status()
+            return success
+        
+        result = asyncio.run(test_status())
+        
+        if result:
+            print("✅ Status message sent! Check your Telegram.\n")
+        else:
+            print("❌ Failed to send message\n")
+            return 1
+        
+        # Test 2: Send test ready-to-trade alert
+        print("Test 2: Sending test 'Ready to Trade' alert...")
+        
+        test_signal = {
+            'pair': 'GBP/USD',
+            'direction': 'LONG',
+            'strength': 'STRONG',
+            'entry_price': 1.2700,
+            'stop_loss': 1.2650,
+            'tp1': 1.2750,
+            'tp2': 1.2800,
+            'tp3': 1.2850,
+            'position_size_lots': 0.20,
+            'risk_amount': 100.0,
+            'risk_reward': 3.0,
+            'entry_zone_type': 'Equal Lows',
+            'entry_zone_level': 1.2695
+        }
+        
+        async def test_ready():
+            success = await notifier.send_ready_to_trade(test_signal, with_buttons=True)
+            return success
+        
+        result = asyncio.run(test_ready())
+        
+        if result:
+            print("✅ Ready to Trade alert sent! Check your Telegram.\n")
+        else:
+            print("❌ Failed to send alert\n")
+        
+        print("="*60)
+        print("✅ TELEGRAM BOT TEST COMPLETE!")
+        print("="*60 + "\n")
+        print("💡 Check your Telegram for the test messages!")
+        
+    except Exception as e:
+        print(f"\n❌ ERROR: {e}")
+        logger.exception("Test failed")
+        return 1
+    
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())
