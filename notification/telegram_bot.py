@@ -256,3 +256,96 @@ class TelegramNotifier:
             ])
         
         return await self.send_message(message, reply_markup=keyboard)
+    
+    async def send_entry_confirmed(
+        self,
+        pair: str,
+        direction: str,
+        entry_price: float,
+        volume_increase: float,
+        reaction_type: str
+    ) -> bool:
+        """Send entry confirmation alert (T-0)"""
+        
+        if AlertLevel.ENTRY_CONFIRM not in self.enabled_alerts:
+            logger.debug("Entry confirmation alerts disabled")
+            return False
+        
+        message = self.formatter.format_entry_confirmed(
+            pair=pair,
+            direction=direction,
+            entry_price=entry_price,
+            volume_increase=volume_increase,
+            reaction_type=reaction_type
+        )
+        
+        return await self.send_message(message)
+    
+    async def send_entry_cancelled(
+        self,
+        pair: str,
+        direction: str,
+        reason: str
+    ) -> bool:
+        """Send entry cancellation alert (T-0)"""
+        
+        if AlertLevel.ENTRY_CONFIRM not in self.enabled_alerts:
+            return False
+        
+        message = self.formatter.format_entry_cancelled(
+            pair=pair,
+            direction=direction,
+            cancellation_reason=reason
+        )
+        
+        return await self.send_message(message)
+    
+    async def send_position_update(
+        self,
+        position_data: Dict
+    ) -> bool:
+        """Send position update (TP hit, trailing stop moved)"""
+        
+        message = self.formatter.format_position_update(
+            pair=position_data['pair'],
+            direction=position_data['direction'],
+            entry_price=position_data['entry_price'],
+            current_price=position_data['current_price'],
+            current_profit_pips=position_data['profit_pips'],
+            current_profit_usd=position_data['profit_usd'],
+            r_multiple=position_data['r_multiple'],
+            next_tp=position_data['next_tp'],
+            action=position_data['action']
+        )
+        
+        return await self.send_message(message)
+    
+    async def send_error_alert(
+        self,
+        error_type: str,
+        error_message: str
+    ) -> bool:
+        """Send error alert"""
+        
+        if AlertLevel.ERROR not in self.enabled_alerts:
+            return False
+        
+        message = self.formatter.format_error_alert(
+            error_type=error_type,
+            error_message=error_message
+        )
+        
+        return await self.send_message(message, disable_notification=False)
+    
+    async def send_status(self) -> bool:
+        """Send system status"""
+        
+        message = self.formatter.format_status_message(
+            system_status="running",
+            active_signals=0,
+            active_trades=0,
+            account_balance=config.ACCOUNT_BALANCE,
+            today_pnl=0.0
+        )
+        
+        return await self.send_message(message)
