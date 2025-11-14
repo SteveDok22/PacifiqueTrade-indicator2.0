@@ -258,3 +258,78 @@ Remember: Not every signal becomes a trade. We only take HIGH PROBABILITY setups
         return message.strip()
     
     @staticmethod
+    def format_error_alert(
+        error_type: str,
+        error_message: str,
+        timestamp: Optional[datetime] = None
+    ) -> str:
+        """Format error alert"""
+        if timestamp is None:
+            timestamp = datetime.now()
+        
+        message = f"""
+⚠️ <b>SYSTEM ERROR</b> ⚠️
+
+🔴 <b>Type:</b> {error_type}
+📝 <b>Message:</b> {error_message}
+⏰ <b>Time:</b> {timestamp.strftime('%Y-%m-%d %H:%M:%S')}
+
+💡 The system will attempt to recover automatically.
+Check logs for details.
+"""
+        return message.strip()
+    
+    @staticmethod
+    def format_daily_summary(
+        date: str,
+        signals_generated: int,
+        trades_taken: int,
+        trades_won: int,
+        trades_lost: int,
+        total_profit_loss: float,
+        win_rate: float
+    ) -> str:
+        """Format daily summary"""
+        message = f"""
+📊 <b>DAILY SUMMARY</b> 📊
+
+📅 <b>Date:</b> {date}
+
+📈 <b>Signals:</b> {signals_generated} generated
+🎯 <b>Trades:</b> {trades_taken} taken
+
+✅ <b>Winners:</b> {trades_won}
+❌ <b>Losers:</b> {trades_lost}
+📊 <b>Win Rate:</b> {win_rate:.1f}%
+
+💰 <b>P&L:</b> ${total_profit_loss:+.2f}
+
+{"🎉 Great day!" if total_profit_loss > 0 else "📚 Learn and improve!"}
+"""
+        return message.strip()
+    
+    @staticmethod
+    def format_status_message(
+        system_status: str,
+        active_signals: int,
+        active_trades: int,
+        account_balance: float,
+        today_pnl: float
+    ) -> str:
+        """Format system status message"""
+        status_emoji = "🟢" if system_status == "running" else "🔴"
+        
+        message = f"""
+{status_emoji} <b>SYSTEM STATUS</b>
+
+⚙️ <b>Status:</b> {system_status.upper()}
+
+📊 <b>Active Signals:</b> {active_signals}
+💹 <b>Active Trades:</b> {active_trades}
+
+💰 <b>Account:</b> ${account_balance:,.2f}
+📈 <b>Today P&L:</b> ${today_pnl:+.2f}
+
+✅ All systems operational
+"""
+        return message.strip()
