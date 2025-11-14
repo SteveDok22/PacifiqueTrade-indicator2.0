@@ -179,3 +179,55 @@ class TrailingStopManager:
                 return plus_1r
         
         return None
+    
+    def _trail_by_ema_or_swing(
+        self,
+        direction: str,
+        current_price: float,
+        current_stop: float,
+        ema21: Optional[float]
+    ) -> Optional[float]:
+        """
+        Trail stop by EMA21 or use percentage-based trailing
+        
+        If EMA21 available: Use it
+        Else: Trail by 1.5% from current price
+        """
+        if ema21:
+            # Use EMA21 as trailing stop
+            if direction == 'long':
+                # Place stop below EMA21
+                new_stop = ema21 * 0.998  # 0.2% below EMA21
+                
+                # Only move if it's better than current
+                if new_stop > current_stop and new_stop < current_price:
+                    logger.info(f"Trailing by EMA21: {current_stop:.5f} → {new_stop:.5f}")
+                    return new_stop
+            
+            else:  # short
+                # Place stop above EMA21
+                new_stop = ema21 * 1.002  # 0.2% above EMA21
+                
+                if new_stop < current_stop and new_stop > current_price:
+                    logger.info(f"Trailing by EMA21: {current_stop:.5f} → {new_stop:.5f}")
+                    return new_stop
+        
+        else:
+            # Percentage-based trailing (1.5% from current price)
+            trail_pct = 0.015
+            
+            if direction == 'long':
+                new_stop = current_price * (1 - trail_pct)
+                
+                if new_stop > current_stop:
+                    logger.info(f"Trailing by {trail_pct*100}%: {current_stop:.5f} → {new_stop:.5f}")
+                    return new_stop
+            
+            else:  # short
+                new_stop = current_price * (1 + trail_pct)
+                
+                if new_stop < current_stop:
+                    logger.info(f"Trailing by {trail_pct*100}%: {current_stop:.5f} → {new_stop:.5f}")
+                    return new_stop
+        
+        return None
