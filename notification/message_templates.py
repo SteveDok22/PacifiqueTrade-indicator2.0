@@ -333,3 +333,65 @@ Check logs for details.
 ✅ All systems operational
 """
         return message.strip()
+
+def main():
+    """Test message formatting"""
+    
+    print("\n" + "="*60)
+    print("MESSAGE FORMATTER TEST")
+    print("="*60 + "\n")
+    
+    formatter = MessageFormatter()
+    
+    # Test 1: Pre-Market Alert
+    print("Test 1: Pre-Market Alert\n")
+    msg1 = formatter.format_pre_market_alert(
+        pair="GBP/USD",
+        fundamental_direction="USD Weaker (Bullish GBP/USD)",
+        event_name="US CPI",
+        forecast="3.2%",
+        previous="3.5%",
+        impact="HIGH",
+        time_to_open="4 hours"
+    )
+    print(msg1)
+    print("\n" + "-"*60 + "\n")
+    
+    # Test 2: Ready to Trade Alert
+    print("Test 2: Ready to Trade Alert\n")
+    msg2 = formatter.format_ready_to_trade(
+        pair="GBP/USD",
+        direction="LONG",
+        strength="STRONG",
+        entry_price=1.2700,
+        stop_loss=1.2650,
+        take_profit_1=1.2750,
+        take_profit_2=1.2800,
+        take_profit_3=1.2850,
+        position_size_lots=0.20,
+        risk_amount=100.0,
+        risk_reward=3.0,
+        entry_zone_type="Equal Lows",
+        entry_zone_level=1.2695
+    )
+    print(msg2)
+    print("\n" + "-"*60 + "\n")
+    
+    # Test 3: Entry Confirmed
+    print("Test 3: Entry Confirmed\n")
+    msg3 = formatter.format_entry_confirmed(
+        pair="GBP/USD",
+        direction="LONG",
+        entry_price=1.2702,
+        volume_increase=175,
+        reaction_type="Strong bullish breakout"
+    )
+    print(msg3)
+    
+    print("\n" + "="*60)
+    print("✅ MESSAGE FORMATTER TEST COMPLETE!")
+    print("="*60 + "\n")
+
+
+if __name__ == "__main__":
+    main()
