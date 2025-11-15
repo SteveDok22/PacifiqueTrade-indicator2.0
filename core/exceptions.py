@@ -31,3 +31,27 @@ class APIError(PacifiqueTradeError):
         if status_code:
             full_message += f" (Status: {status_code})"
         super().__init__(full_message, details)
+        
+class DataValidationError(PacifiqueTradeError):
+    """Raised when data validation fails"""
+    
+    def __init__(self, field_name: str, value, expected: str = None, details: dict = None):
+        self.field_name = field_name
+        self.value = value
+        self.expected = expected
+        message = f"Data validation failed for '{field_name}': got {value}"
+        if expected:
+            message += f", expected {expected}"
+        super().__init__(message, details)
+
+
+class ConfigurationError(PacifiqueTradeError):
+    """Raised when configuration is invalid or missing"""
+    
+    def __init__(self, config_key: str, message: str = None, details: dict = None):
+        self.config_key = config_key
+        if message is None:
+            message = f"Configuration error for '{config_key}': missing or invalid value"
+        else:
+            message = f"Configuration error for '{config_key}': {message}"
+        super().__init__(message, details)        
