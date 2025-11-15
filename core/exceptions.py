@@ -55,3 +55,46 @@ class ConfigurationError(PacifiqueTradeError):
         else:
             message = f"Configuration error for '{config_key}': {message}"
         super().__init__(message, details)        
+        
+class SignalGenerationError(PacifiqueTradeError):
+    """Raised when signal generation fails"""
+    
+    def __init__(self, reason: str, pair: str = None, details: dict = None):
+        self.reason = reason
+        self.pair = pair
+        message = f"Signal generation failed: {reason}"
+        if pair:
+            message += f" for {pair}"
+        super().__init__(message, details)
+
+
+class MarketDataError(PacifiqueTradeError):
+    """Raised when market data fetching or processing fails"""
+    
+    def __init__(self, pair: str, timeframe: str, message: str, details: dict = None):
+        self.pair = pair
+        self.timeframe = timeframe
+        full_message = f"Market data error for {pair} ({timeframe}): {message}"
+        super().__init__(full_message, details)
+
+
+class TelegramError(PacifiqueTradeError):
+    """Raised when Telegram notification fails"""
+    
+    def __init__(self, message: str, chat_id: str = None, details: dict = None):
+        self.chat_id = chat_id
+        full_message = f"Telegram error: {message}"
+        if chat_id:
+            full_message += f" (Chat ID: {chat_id})"
+        super().__init__(full_message, details)
+
+
+class RiskManagementError(PacifiqueTradeError):
+    """Raised when risk management calculations fail"""
+    
+    def __init__(self, message: str, account_balance: float = None, details: dict = None):
+        self.account_balance = account_balance
+        full_message = f"Risk management error: {message}"
+        if account_balance:
+            full_message += f" (Account: ${account_balance})"
+        super().__init__(full_message, details)        
