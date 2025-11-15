@@ -140,3 +140,93 @@ class JobScheduler:
         logger.info("Stopping JobScheduler...")
         self.scheduler.shutdown()
         logger.info("✅ JobScheduler stopped")
+        
+    def _schedule_london_session(self):
+        """Schedule jobs for London session (08:00 UTC)"""
+        
+        # T-4h: Fundamental screening (04:00 UTC)
+        self.scheduler.add_job(
+            func=self._run_fundamental_screening,
+            trigger=CronTrigger(hour=4, minute=0, timezone=pytz.UTC),
+            args=['London'],
+            id='london_fundamental',
+            name='London: Fundamental Screening (T-4h)',
+            misfire_grace_time=300  # 5 minutes grace
+        )
+        
+        # T-2h: Technical analysis (06:00 UTC)
+        self.scheduler.add_job(
+            func=self._run_technical_analysis,
+            trigger=CronTrigger(hour=6, minute=0, timezone=pytz.UTC),
+            args=['London'],
+            id='london_technical',
+            name='London: Technical Analysis (T-2h)',
+            misfire_grace_time=300
+        )
+        
+        # T-15min: Signal generation (07:45 UTC)
+        self.scheduler.add_job(
+            func=self._run_signal_generation,
+            trigger=CronTrigger(hour=7, minute=45, timezone=pytz.UTC),
+            args=['London'],
+            id='london_signals',
+            name='London: Signal Generation (T-15min)',
+            misfire_grace_time=120
+        )
+        
+        # T-0: Market reaction (08:00 UTC)
+        self.scheduler.add_job(
+            func=self._run_market_reaction,
+            trigger=CronTrigger(hour=8, minute=0, timezone=pytz.UTC),
+            args=['London'],
+            id='london_reaction',
+            name='London: Market Reaction Monitor (T-0)',
+            misfire_grace_time=60
+        )
+        
+        logger.info("✅ London session jobs scheduled")
+    
+    def _schedule_newyork_session(self):
+        """Schedule jobs for New York session (13:30 UTC)"""
+        
+        # T-4h: Fundamental screening (09:30 UTC)
+        self.scheduler.add_job(
+            func=self._run_fundamental_screening,
+            trigger=CronTrigger(hour=9, minute=30, timezone=pytz.UTC),
+            args=['NewYork'],
+            id='ny_fundamental',
+            name='NY: Fundamental Screening (T-4h)',
+            misfire_grace_time=300
+        )
+        
+        # T-2h: Technical analysis (11:30 UTC)
+        self.scheduler.add_job(
+            func=self._run_technical_analysis,
+            trigger=CronTrigger(hour=11, minute=30, timezone=pytz.UTC),
+            args=['NewYork'],
+            id='ny_technical',
+            name='NY: Technical Analysis (T-2h)',
+            misfire_grace_time=300
+        )
+        
+        # T-15min: Signal generation (13:15 UTC)
+        self.scheduler.add_job(
+            func=self._run_signal_generation,
+            trigger=CronTrigger(hour=13, minute=15, timezone=pytz.UTC),
+            args=['NewYork'],
+            id='ny_signals',
+            name='NY: Signal Generation (T-15min)',
+            misfire_grace_time=120
+        )
+        
+        # T-0: Market reaction (13:30 UTC)
+        self.scheduler.add_job(
+            func=self._run_market_reaction,
+            trigger=CronTrigger(hour=13, minute=30, timezone=pytz.UTC),
+            args=['NewYork'],
+            id='ny_reaction',
+            name='NY: Market Reaction Monitor (T-0)',
+            misfire_grace_time=60
+        )
+        
+        logger.info("✅ New York session jobs scheduled")    
