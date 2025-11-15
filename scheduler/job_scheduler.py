@@ -71,3 +71,32 @@ class JobScheduler:
     End of Day:
       - 22:00 UTC: Daily summary
     """
+    
+    def __init__(self):
+        """Initialize the scheduler and all components"""
+        
+        logger.info("Initializing JobScheduler...")
+        
+        # Initialize scheduler
+        self.scheduler = BackgroundScheduler(timezone=pytz.UTC)
+        
+        # Initialize trading components
+        self.fundamental_analyzer = FundamentalAnalyzer()
+        self.trend_detector = TrendDetector()
+        self.liquidity_detector = LiquidityZoneDetector()
+        self.signal_generator = SignalGenerator()
+        self.position_sizer = PositionSizer()
+        self.sltp_calculator = SLTPCalculator()
+        self.market_data = MarketDataFetcher()
+        
+        # Initialize Telegram notifier
+        self.telegram = TelegramNotifier()
+        
+        # Get trading pairs from config
+        self.pairs = config.get_trading_pairs()
+        
+        # Storage for active signals
+        self.active_signals: Dict[str, Dict] = {}
+        self.active_trades: Dict[str, Dict] = {}
+        
+        logger.info(f"✅ JobScheduler initialized for pairs: {[p.value for p in self.pairs]}")
