@@ -100,3 +100,43 @@ class JobScheduler:
         self.active_trades: Dict[str, Dict] = {}
         
         logger.info(f"✅ JobScheduler initialized for pairs: {[p.value for p in self.pairs]}")
+        
+    def start(self):
+        """Start the scheduler"""
+        
+        logger.info("Starting JobScheduler...")
+        
+        try:
+            # Schedule London session jobs
+            self._schedule_london_session()
+            
+            # Schedule New York session jobs
+            self._schedule_newyork_session()
+            
+            # Schedule daily summary
+            self._schedule_daily_summary()
+            
+            # Start the scheduler
+            self.scheduler.start()
+            
+            logger.info("✅ JobScheduler started successfully!")
+            logger.info("Scheduled jobs:")
+            for job in self.scheduler.get_jobs():
+                logger.info(f"  - {job.name} (Next run: {job.next_run_time})")
+            
+            # Send startup notification
+            if self.telegram.is_enabled():
+                asyncio.run(self._send_startup_notification())
+            
+        except Exception as e:
+            logger.error(f"Failed to start scheduler: {e}")
+            raise SchedulerError(
+                job_name="startup",
+                message=str(e)
+            )
+    
+    def stop(self):
+        """Stop the scheduler"""
+        logger.info("Stopping JobScheduler...")
+        self.scheduler.shutdown()
+        logger.info("✅ JobScheduler stopped")
