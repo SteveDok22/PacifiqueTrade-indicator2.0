@@ -110,3 +110,70 @@ class CurrencyPair(Enum):
     def yfinance_ticker(self) -> str:
         """Convert to yfinance ticker format"""
         return self.value.replace("/", "") + "=X"
+
+class FundamentalDirection(Enum):
+    """Fundamental analysis direction"""
+    USD_STRONGER = "usd_stronger"
+    USD_WEAKER = "usd_weaker"
+    USD_NEUTRAL = "usd_neutral"
+    COUNTERPARTY_STRONGER = "counterparty_stronger"
+    COUNTERPARTY_WEAKER = "counterparty_weaker"
+
+
+class AlertLevel(Enum):
+    """Telegram alert levels"""
+    PRE_MARKET = "pre_market"
+    TECHNICAL_CONFIRM = "technical_confirm"
+    READY_TO_TRADE = "ready_to_trade"
+    ENTRY_CONFIRM = "entry_confirm"
+    ERROR = "error"
+    INFO = "info"
+
+
+class RiskLevel(Enum):
+    """Risk levels for position sizing"""
+    CONSERVATIVE = 0.5
+    MODERATE = 1.0
+    AGGRESSIVE = 2.0
+    VERY_AGGRESSIVE = 3.0
+
+
+# Mapping news events to impact levels
+NEWS_EVENT_IMPACT = {
+    # US Events
+    "NFP": NewsImpact.HIGH,
+    "CPI": NewsImpact.HIGH,
+    "FOMC": NewsImpact.HIGH,
+    "GDP": NewsImpact.HIGH,
+    "RETAIL_SALES": NewsImpact.MEDIUM,
+    "JOBLESS_CLAIMS": NewsImpact.MEDIUM,
+    "PPI": NewsImpact.MEDIUM,
+    
+    # UK Events
+    "BOE_RATES": NewsImpact.HIGH,
+    "UK_CPI": NewsImpact.HIGH,
+    "UK_GDP": NewsImpact.HIGH,
+    "UK_PMI": NewsImpact.MEDIUM,
+    "UK_RETAIL_SALES": NewsImpact.MEDIUM,
+    
+    # Eurozone Events
+    "ECB_RATES": NewsImpact.HIGH,
+    "EU_CPI": NewsImpact.HIGH,
+    "EU_GDP": NewsImpact.HIGH,
+    "EU_PMI": NewsImpact.MEDIUM,
+    
+    # Japan Events
+    "BOJ_RATES": NewsImpact.HIGH,
+    "JP_CPI": NewsImpact.HIGH,
+    "JP_TANKAN": NewsImpact.HIGH,
+    "JP_GDP": NewsImpact.MEDIUM,
+}
+
+
+# Market open times (UTC)
+MARKET_OPEN_TIMES = {
+    MarketSession.TOKYO: "00:00",
+    MarketSession.LONDON: "08:00",
+    MarketSession.NEW_YORK: "13:30",
+    MarketSession.SYDNEY: "22:00",
+}
