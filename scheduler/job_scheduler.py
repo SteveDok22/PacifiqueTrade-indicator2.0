@@ -290,3 +290,57 @@ class JobScheduler:
                     "Fundamental Screening Error",
                     str(e)
                 ))    
+                
+     def _run_technical_analysis(self, session: str):
+        """
+        T-2h: Technical analysis
+        
+        - Analyze H4 and H1 trends
+        - Compare with fundamental
+        - Send confirmation alert
+        """
+        logger.info(f"{'='*60}")
+        logger.info(f"RUNNING: Technical Analysis ({session} session)")
+        logger.info(f"{'='*60}")
+        
+        try:
+            for pair in self.pairs:
+                signal_key = f"{pair.value}_{session}"
+                
+                if signal_key not in self.active_signals:
+                    logger.debug(f"No fundamental signal for {pair.value}, skipping")
+                    continue
+                
+                # Analyze trends
+                trends = self.trend_detector.analyze_multi_timeframe(pair)
+                
+                # Store in signal
+                self.active_signals[signal_key]['trends'] = trends
+                
+                # Check alignment
+                fundamental = self.active_signals[signal_key]['fundamental']
+                confirms = self._check_trend_alignment(fundamental, trends['H4'])
+                
+                # Send Telegram alert
+                if self.telegram.is_enabled():
+                    asyncio.run(self._send_technical_alert(
+                        pair.value, fundamental, trends, confirms
+                    ))
+                
+                if not confirms:
+                    logger.info(f"❌ {pair.value}: Trend doesn't confirm fundamental, removing signal")
+                    del self.active_signals[signal_key]
+                else:
+                    logger.info(f"✅ {pair.value}: Trend confirms fundamental")
+            
+            logger.info(f"✅ Technical analysis complete")
+            
+        except Exception as e:
+            logger.error(f"Technical analysis failed: {e}", exc_info=True)
+            if self.telegram.is_enabled():
+                asyncio.run(self.telegram.send_error_alert(
+                    "Technical Analysis Error",
+                    str(e)
+                ))
+                
+                
