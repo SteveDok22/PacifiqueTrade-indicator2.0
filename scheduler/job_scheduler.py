@@ -243,3 +243,50 @@ class JobScheduler:
         )
         
         logger.info("✅ Daily summary job scheduled")    
+        
+    # ==================================================================
+    # JOB EXECUTION METHODS
+    # ==================================================================
+    
+    def _run_fundamental_screening(self, session: str):
+        """
+        T-4h: Fundamental screening
+        
+        - Fetch economic calendar
+        - Filter high-impact news
+        - Send Telegram alert
+        """
+        logger.info(f"{'='*60}")
+        logger.info(f"RUNNING: Fundamental Screening ({session} session)")
+        logger.info(f"{'='*60}")
+        
+        try:
+            # Run fundamental analysis
+            fundamental_signals = self.fundamental_analyzer.analyze_today(self.pairs)
+            
+            if not fundamental_signals:
+                logger.info("No high-impact news today")
+                return
+            
+            # Store signals
+            for pair_name, signal in fundamental_signals.items():
+                self.active_signals[f"{pair_name}_{session}"] = {
+                    'session': session,
+                    'fundamental': signal,
+                    'timestamp': datetime.now(pytz.UTC)
+                }
+            
+            # Send Telegram alerts
+            if self.telegram.is_enabled():
+                for pair_name, signal in fundamental_signals.items():
+                    asyncio.run(self._send_fundamental_alert(pair_name, signal))
+            
+            logger.info(f"✅ Fundamental screening complete: {len(fundamental_signals)} signals")
+            
+        except Exception as e:
+            logger.error(f"Fundamental screening failed: {e}", exc_info=True)
+            if self.telegram.is_enabled():
+                asyncio.run(self.telegram.send_error_alert(
+                    "Fundamental Screening Error",
+                    str(e)
+                ))    
