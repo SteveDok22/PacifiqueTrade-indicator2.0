@@ -343,4 +343,89 @@ class JobScheduler:
                     str(e)
                 ))
                 
-                
+     def _run_signal_generation(self, session: str):
+        """
+        T-15min: Signal generation
+        
+        - Detect liquidity zones
+        - Combine all factors
+        - Calculate SL/TP
+        - Send READY TO TRADE alert
+        """
+        logger.info(f"{'='*60}")
+        logger.info(f"RUNNING: Signal Generation ({session} session)")
+        logger.info(f"{'='*60}")
+        
+        try:
+            pairs_to_analyze = []
+            
+            # Find pairs with confirmed signals
+            for signal_key in list(self.active_signals.keys()):
+                if session in signal_key:
+                    pair_name = signal_key.split('_')[0]
+                    pair = next((p for p in self.pairs if p.value == pair_name), None)
+                    if pair:
+                        pairs_to_analyze.append(pair)
+            
+            if not pairs_to_analyze:
+                logger.info("No pairs ready for signal generation")
+                return
+            
+            # Generate signals
+            signals = self.signal_generator.generate_signals(pairs_to_analyze)
+            
+            if not signals:
+                logger.info("No valid signals generated")
+                return
+            
+            # Calculate position sizes and SL/TP for each signal
+            for pair_name, signal in signals.items():
+                try:
+                    # Calculate position size
+                    position = self.position_sizer.calculate_position_size(
+                        pair=signal.pair,
+                        entry_price=signal.entry_price,
+                        stop_loss=signal.entry_price * 0.985  # Temporary, will be calculated properly
+                    )
+                    
+                    # Calculate SL/TP
+                    sltp_levels = self.sltp_calculator.calculate_sl_tp(
+                        pair=signal.pair,
+                        direction=signal.direction,
+                        entry_price=signal.entry_price,
+                        liquidity_zones=signal.liquidity_zones
+                    )
+                    
+                    # Update signal with risk management
+                    signal.stop_loss = sltp_levels.stop_loss
+                    signal.take_profit_1 = sltp_levels.take_profit_1
+                    signal.take_profit_2 = sltp_levels.take_profit_2
+                    signal.take_profit_3 = sltp_levels.take_profit_3
+                    signal.risk_reward = sltp_levels.r_multiple_3
+                    
+                    # Store complete signal
+                    self.active_signals[f"{pair_name}_{session}"]['complete_signal'] = {
+                        'signal': signal,
+                        'position': position,
+                        'sltp': sltp_levels
+                    }
+                    
+                    # Send READY TO TRADE alert
+                    if self.telegram.is_enabled():
+                        asyncio.run(self._send_ready_to_trade_alert(signal, position))
+                    
+                    logger.info(f"✅ {pair_name}: Complete signal generated")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to complete signal for {pair_name}: {e}")
+                    continue
+            
+            logger.info(f"✅ Signal generation complete: {len(signals)} signals ready")
+            
+        except Exception as e:
+            logger.error(f"Signal generation failed: {e}", exc_info=True)
+            if self.telegram.is_enabled():
+                asyncio.run(self.telegram.send_error_alert(
+                    "Signal Generation Error",
+                    str(e)
+                ))            
