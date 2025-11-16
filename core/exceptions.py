@@ -143,3 +143,38 @@ class LiquidityZoneError(PacifiqueTradeError):
         self.reason = reason
         message = f"Liquidity zone detection ({zone_type}) failed for {pair}: {reason}"
         super().__init__(message, details)        
+        
+class InsufficientDataError(PacifiqueTradeError):
+    """Raised when there's not enough data for analysis"""
+    
+    def __init__(self, required: int, available: int, data_type: str, details: dict = None):
+        self.required = required
+        self.available = available
+        self.data_type = data_type
+        message = f"Insufficient {data_type}: need {required} bars, got {available}"
+        super().__init__(message, details)
+
+
+class TimeoutError(PacifiqueTradeError):
+    """Raised when an operation times out"""
+    
+    def __init__(self, operation: str, timeout_seconds: int, details: dict = None):
+        self.operation = operation
+        self.timeout_seconds = timeout_seconds
+        message = f"Operation '{operation}' timed out after {timeout_seconds} seconds"
+        super().__init__(message, details)
+
+
+# Exception mapping for retry logic
+RETRYABLE_EXCEPTIONS = (
+    APIError,
+    MarketDataError,
+    CacheError,
+    TimeoutError,
+)
+
+NON_RETRYABLE_EXCEPTIONS = (
+    ConfigurationError,
+    DataValidationError,
+    InsufficientDataError,
+)        
