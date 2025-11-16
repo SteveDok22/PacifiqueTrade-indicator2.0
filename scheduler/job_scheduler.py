@@ -230,3 +230,16 @@ class JobScheduler:
         )
         
         logger.info("✅ New York session jobs scheduled")    
+        
+    def _schedule_daily_summary(self):
+        """Schedule daily summary (22:00 UTC)"""
+        
+        self.scheduler.add_job(
+            func=self._run_daily_summary,
+            trigger=CronTrigger(hour=22, minute=0, timezone=pytz.UTC),
+            id='daily_summary',
+            name='Daily Summary',
+            misfire_grace_time=600
+        )
+        
+        logger.info("✅ Daily summary job scheduled")    
