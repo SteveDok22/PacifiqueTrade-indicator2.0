@@ -98,3 +98,48 @@ class RiskManagementError(PacifiqueTradeError):
         if account_balance:
             full_message += f" (Account: ${account_balance})"
         super().__init__(full_message, details)        
+        
+class SchedulerError(PacifiqueTradeError):
+    """Raised when scheduler encounters an error"""
+    
+    def __init__(self, job_name: str, message: str, details: dict = None):
+        self.job_name = job_name
+        full_message = f"Scheduler error for job '{job_name}': {message}"
+        super().__init__(full_message, details)
+
+
+class CacheError(PacifiqueTradeError):
+    """Raised when cache operations fail"""
+    
+    def __init__(self, operation: str, key: str = None, message: str = None, details: dict = None):
+        self.operation = operation
+        self.key = key
+        if message is None:
+            message = f"Cache {operation} failed"
+        else:
+            message = f"Cache {operation} failed: {message}"
+        if key:
+            message += f" (Key: {key})"
+        super().__init__(message, details)
+
+
+class TrendDetectionError(PacifiqueTradeError):
+    """Raised when trend detection fails"""
+    
+    def __init__(self, pair: str, timeframe: str, reason: str, details: dict = None):
+        self.pair = pair
+        self.timeframe = timeframe
+        self.reason = reason
+        message = f"Trend detection failed for {pair} ({timeframe}): {reason}"
+        super().__init__(message, details)
+
+
+class LiquidityZoneError(PacifiqueTradeError):
+    """Raised when liquidity zone detection fails"""
+    
+    def __init__(self, pair: str, zone_type: str, reason: str, details: dict = None):
+        self.pair = pair
+        self.zone_type = zone_type
+        self.reason = reason
+        message = f"Liquidity zone detection ({zone_type}) failed for {pair}: {reason}"
+        super().__init__(message, details)        
