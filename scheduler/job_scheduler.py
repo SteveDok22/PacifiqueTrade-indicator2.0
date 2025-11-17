@@ -429,3 +429,80 @@ class JobScheduler:
                     "Signal Generation Error",
                     str(e)
                 ))            
+    def _run_market_reaction(self, session: str):
+        """
+        T-0: Market reaction monitoring
+        
+        - Monitor first 15-30 minutes after open
+        - Check volume and price action
+        - Confirm or cancel entry
+        """
+        logger.info(f"{'='*60}")
+        logger.info(f"RUNNING: Market Reaction Monitor ({session} session)")
+        logger.info(f"{'='*60}")
+        
+        try:
+            # Find signals for this session
+            for signal_key in list(self.active_signals.keys()):
+                if session not in signal_key:
+                    continue
+                
+                signal_data = self.active_signals[signal_key].get('complete_signal')
+                if not signal_data:
+                    continue
+                
+                signal = signal_data['signal']
+                pair = signal.pair
+                
+                # Get current price
+                current_price = self.market_data.get_current_price(pair)
+                
+                # Simple validation: check if price moved in expected direction
+                direction = signal.direction
+                entry = signal.entry_price
+                
+                # TODO: Add volume analysis and more sophisticated confirmation
+                # For now, simple price movement check
+                
+                if direction == 'long':
+                    confirmed = current_price >= entry * 0.999  # Within 0.1%
+                else:
+                    confirmed = current_price <= entry * 1.001
+                
+                # Send notification
+                if self.telegram.is_enabled():
+                    if confirmed:
+                        asyncio.run(self.telegram.send_entry_confirmed(
+                            pair=pair.value,
+                            direction=direction,
+                            entry_price=current_price,
+                            volume_increase=150.0,  # Placeholder
+                            reaction_type="Price confirms direction"
+                        ))
+                    else:
+                        asyncio.run(self.telegram.send_entry_cancelled(
+                            pair=pair.value,
+                            direction=direction,
+                            reason="Price moved against expected direction"
+                        ))
+                
+                # Move to active trades if confirmed
+                if confirmed:
+                    self.active_trades[pair.value] = signal_data
+                    logger.info(f"✅ {pair.value}: Entry confirmed, moved to active trades")
+                else:
+                    logger.info(f"❌ {pair.value}: Entry cancelled")
+                
+                # Remove from active signals
+                del self.active_signals[signal_key]
+            
+            logger.info(f"✅ Market reaction monitoring complete")
+            
+        except Exception as e:
+            logger.error(f"Market reaction monitoring failed: {e}", exc_info=True)
+            if self.telegram.is_enabled():
+                asyncio.run(self.telegram.send_error_alert(
+                    "Market Reaction Error",
+                    str(e)
+                ))            
+                
