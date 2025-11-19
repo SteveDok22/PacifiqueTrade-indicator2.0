@@ -38,3 +38,40 @@ LOGO = r"""
 ╚═══════════════════════════════════════════════════════════╝
 """
 
+def setup_logging():
+    """Configure logging for the application"""
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    
+    if config.LOG_COLOR_ENABLED:
+        try:
+            import colorlog
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                log_colors={
+                    'DEBUG': 'cyan',
+                    'INFO': 'green',
+                    'WARNING': 'yellow',
+                    'ERROR': 'red',
+                    'CRITICAL': 'red,bg_white',
+                }
+            )
+        except ImportError:
+            formatter = logging.Formatter(log_format)
+    else:
+        formatter = logging.Formatter(log_format)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    
+    # File handler
+    file_handler = logging.FileHandler(config.LOG_FILE)
+    file_handler.setFormatter(logging.Formatter(log_format))
+    
+    # Root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, config.LOG_LEVEL))
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+    
+    return logging.getLogger(__name__)
