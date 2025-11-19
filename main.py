@@ -75,3 +75,76 @@ def setup_logging():
     root_logger.addHandler(file_handler)
     
     return logging.getLogger(__name__)
+
+def parse_arguments():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description="PacifiqueTrade Indicator 2.0 - Forex Trading Signal System",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py                          # Run in scheduled mode (default)
+  python main.py --manual                 # Run manual analysis for today
+  python main.py --pair GBP/USD           # Analyze specific pair
+  python main.py --backtest               # Run backtesting mode
+  python main.py --validate-config        # Validate configuration only
+        """
+    )
+    
+    parser.add_argument(
+        '--schedule',
+        action='store_true',
+        help='Run in scheduled mode (default)'
+    )
+    
+    parser.add_argument(
+        '--manual',
+        action='store_true',
+        help='Run manual analysis for today'
+    )
+    
+    parser.add_argument(
+        '--pair',
+        type=str,
+        choices=['GBP/USD', 'EUR/USD', 'USD/JPY'],
+        help='Analyze specific currency pair'
+    )
+    
+    parser.add_argument(
+        '--date',
+        type=str,
+        default='today',
+        help='Date for analysis (YYYY-MM-DD or "today"/"tomorrow")'
+    )
+    
+    parser.add_argument(
+        '--backtest',
+        action='store_true',
+        help='Run backtesting mode'
+    )
+    
+    parser.add_argument(
+        '--start',
+        type=str,
+        help='Backtest start date (YYYY-MM-DD)'
+    )
+    
+    parser.add_argument(
+        '--end',
+        type=str,
+        help='Backtest end date (YYYY-MM-DD)'
+    )
+    
+    parser.add_argument(
+        '--validate-config',
+        action='store_true',
+        help='Validate configuration and exit'
+    )
+    
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'PacifiqueTrade Indicator {Config.VERSION}'
+    )
+    
+    return parser.parse_args()
