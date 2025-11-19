@@ -148,3 +148,17 @@ Examples:
     )
     
     return parser.parse_args()
+
+def print_system_info(logger):
+    """Print system information and configuration"""
+    logger.info("=" * 60)
+    logger.info(f"PacifiqueTrade Indicator {Config.VERSION}")
+    logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    logger.info("=" * 60)
+    logger.info(f"Trading Pairs: {config.TRADING_PAIRS_STR}")
+    logger.info(f"Risk per Trade: {config.RISK_PERCENTAGE}%")
+    logger.info(f"Account Balance: ${config.ACCOUNT_BALANCE:,.2f}")
+    logger.info(f"Telegram Alerts: {'Enabled' if config.TELEGRAM_ENABLED else 'Disabled'}")
+    logger.info(f"Redis Cache: {'Enabled' if config.REDIS_ENABLED else 'Disabled'}")
+    logger.info(f"Mode: {'DRY RUN' if config.DRY_RUN else '⚠️  LIVE TRADING ⚠️'}")
+    logger.info("=" * 60)
