@@ -621,3 +621,47 @@ class JobScheduler:
         
         await self.telegram.send_ready_to_trade(signal_dict, with_buttons=True)
                 
+def main():
+    """Test the Job Scheduler"""
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    print("\n" + "="*60)
+    print("JOB SCHEDULER TEST")
+    print("="*60 + "\n")
+    
+    try:
+        # Create scheduler
+        scheduler = JobScheduler()
+        
+        print("✅ JobScheduler initialized\n")
+        print("Configured pairs:")
+        for pair in scheduler.pairs:
+            print(f"  • {pair.value}")
+        
+        print("\nTelegram enabled:", scheduler.telegram.is_enabled())
+        
+        print("\n" + "-"*60)
+        print("To start the scheduler in production:")
+        print("  1. Ensure .env is properly configured")
+        print("  2. Run: python main.py --schedule")
+        print("  3. The system will run continuously")
+        print("-"*60)
+        
+        print("\n" + "="*60)
+        print("✅ JOB SCHEDULER TEST COMPLETE!")
+        print("="*60 + "\n")
+        
+    except Exception as e:
+        print(f"\n❌ ERROR: {e}")
+        logger.exception("Test failed")
+        return 1
+    
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())                
