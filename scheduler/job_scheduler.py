@@ -530,4 +530,74 @@ class JobScheduler:
             logger.info(f"✅ Daily summary complete")
             
         except Exception as e:
-            logger.error(f"Daily summary failed: {e}", exc_info=True)            
+            logger.error(f"Daily summary failed: {e}", exc_info=True)    
+            
+    # ==================================================================
+    # HELPER METHODS
+    # ==================================================================
+    
+    def _check_trend_alignment(self, fundamental, trend) -> bool:
+        """Check if trend aligns with fundamental"""
+        fund_dir = fundamental.direction.value
+        trend_dir = trend.direction.value
+        
+        if 'stronger' in fund_dir.lower() or 'bullish' in fund_dir.lower():
+            return trend_dir == 'bullish'
+        elif 'weaker' in fund_dir.lower() or 'bearish' in fund_dir.lower():
+            return trend_dir == 'bearish'
+        
+        return False
+    
+    async def _send_startup_notification(self):
+        """Send startup notification"""
+        await self.telegram.send_message(
+            "🚀 <b>PacifiqueTrade Indicator 2.0 Started</b>\n\n"
+            f"✅ System initialized\n"
+            f"📊 Monitoring: {', '.join([p.value for p in self.pairs])}\n"
+            f"⏰ Scheduler: Active\n\n"
+            "Ready to trade! 📈",
+            parse_mode='HTML'
+        )
+    
+    async def _send_fundamental_alert(self, pair_name, signal):
+        """Send fundamental alert to Telegram"""
+        events = signal.events
+        if not events:
+            return
+        
+        event = events[0]  # Main event
+        
+        await self.telegram.send_pre_market_alert(
+            pair=pair_name,
+            fundamental_signal={
+                'direction': signal.direction.value,
+                'event_name': event.event_name,
+                'forecast': event.forecast or 'N/A',
+                'previous': event.previous or 'N/A',
+                'impact': 'HIGH',
+                'time_to_open': '4 hours'
+            }
+        )
+    
+    async def _send_technical_alert(self, pair_name, fundamental, trends, confirms):
+        """Send technical confirmation alert"""
+        trend_h4 = trends['H4']
+        trend_h1 = trends['H1']
+        
+        await self.telegram.send_technical_confirmation(
+            pair=pair_name,
+            fundamental_direction=fundamental.direction.value,
+            trend_h4={
+                'direction': trend_h4.direction.value,
+                'strength': trend_h4.strength.value,
+                'ema50': trend_h4.ema50,
+                'ema200': trend_h4.ema200,
+                'current_price': trend_h4.current_price
+            },
+            trend_h1={
+                'direction': trend_h1.direction.value,
+                'strength': trend_h1.strength.value
+            },
+            confirms=confirms
+        )
+                    
