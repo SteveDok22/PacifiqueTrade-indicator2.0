@@ -229,3 +229,14 @@ def run_backtest_mode(logger, start_date, end_date):
     # results = engine.run()
     
     logger.warning("⚠️  Backtesting not yet implemented - Phase 4")    
+    
+def validate_config_only(logger):
+    """Validate configuration and exit"""
+    logger.info("Validating configuration...")
+    try:
+        config.validate_all()
+        logger.info("✅ Configuration is valid!")
+        return 0
+    except ConfigurationError as e:
+        logger.error(f"❌ Configuration error: {e}")
+        return 1    
