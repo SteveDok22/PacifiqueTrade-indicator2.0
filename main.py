@@ -198,3 +198,23 @@ def run_scheduled_mode(logger):
     except Exception as e:
         logger.error(f"Scheduler error: {e}", exc_info=True)
         raise    
+    
+def run_manual_mode(logger, pair=None, date='today'):
+    """Run manual analysis"""
+    logger.info(f"Running manual analysis for {date}")
+    if pair:
+        logger.info(f"Analyzing single pair: {pair}")
+    else:
+        logger.info(f"Analyzing all pairs: {config.TRADING_PAIRS_STR}")
+    
+    # TODO: Implement manual analysis
+    # from analysis import run_full_analysis
+    # results = run_full_analysis(pair, date)
+    
+    logger.warning("⚠️  Manual analysis not yet fully implemented")
+    logger.info("Showing what would run:")
+    logger.info("  1. Fundamental screening")
+    logger.info("  2. Technical analysis (H4 + H1)")
+    logger.info("  3. Liquidity zone detection")
+    logger.info("  4. Signal generation")
+    logger.info("\nTo run full system: python main.py --schedule")    
