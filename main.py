@@ -240,3 +240,57 @@ def validate_config_only(logger):
     except ConfigurationError as e:
         logger.error(f"❌ Configuration error: {e}")
         return 1    
+    
+def main():
+    """Main entry point"""
+    print(LOGO)
+    
+    # Setup logging
+    logger = setup_logging()
+    
+    # Parse arguments
+    args = parse_arguments()
+    
+    try:
+        # Validate configuration first
+        if args.validate_config:
+            return validate_config_only(logger)
+        
+        config.validate_all()
+        print_system_info(logger)
+        
+        # Run appropriate mode
+        if args.backtest:
+            start = args.start or config.BACKTEST_START_DATE
+            end = args.end or config.BACKTEST_END_DATE
+            run_backtest_mode(logger, start, end)
+        
+        elif args.manual:
+            run_manual_mode(logger, args.pair, args.date)
+        
+        else:
+            # Default: scheduled mode
+            run_scheduled_mode(logger)
+        
+        return 0
+    
+    except ConfigurationError as e:
+        logger.error(f"❌ Configuration error: {e}")
+        logger.error("Please check your .env file and try again")
+        return 1
+    
+    except KeyboardInterrupt:
+        logger.info("\n🛑 Shutting down gracefully...")
+        return 0
+    
+    except PacifiqueTradeError as e:
+        logger.error(f"❌ Application error: {e}")
+        return 1
+    
+    except Exception as e:
+        logger.critical(f"❌ Unexpected error: {e}", exc_info=True)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())    
