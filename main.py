@@ -162,3 +162,39 @@ def print_system_info(logger):
     logger.info(f"Redis Cache: {'Enabled' if config.REDIS_ENABLED else 'Disabled'}")
     logger.info(f"Mode: {'DRY RUN' if config.DRY_RUN else '⚠️  LIVE TRADING ⚠️'}")
     logger.info("=" * 60)
+    
+def run_scheduled_mode(logger):
+    """Run the indicator in scheduled mode"""
+    logger.info("Starting scheduled mode...")
+    logger.info("Indicator will monitor markets and send alerts based on schedule")
+    
+    try:
+        from scheduler import JobScheduler
+        
+        scheduler = JobScheduler()
+        scheduler.start()
+        
+        logger.info("\n" + "="*60)
+        logger.info("🚀 PACIFIQUETRADE INDICATOR 2.0 - RUNNING")
+        logger.info("="*60)
+        logger.info("The system is now monitoring markets 24/7")
+        logger.info("You will receive Telegram alerts at:")
+        logger.info("  • T-4h: Pre-market fundamental screening")
+        logger.info("  • T-2h: Technical confirmation")
+        logger.info("  • T-15min: READY TO TRADE signals")
+        logger.info("  • T-0: Entry confirmation")
+        logger.info("\nPress Ctrl+C to stop")
+        logger.info("="*60 + "\n")
+        
+        # Keep running
+        import time
+        while True:
+            time.sleep(1)
+            
+    except KeyboardInterrupt:
+        logger.info("\n🛑 Stopping scheduler...")
+        scheduler.stop()
+        logger.info("✅ Shutdown complete")
+    except Exception as e:
+        logger.error(f"Scheduler error: {e}", exc_info=True)
+        raise    
