@@ -600,4 +600,24 @@ class JobScheduler:
             },
             confirms=confirms
         )
-                    
+    
+    async def _send_ready_to_trade_alert(self, signal, position):
+        """Send ready to trade alert"""
+        signal_dict = {
+            'pair': signal.pair.value,
+            'direction': signal.direction.upper(),
+            'strength': signal.strength.value,
+            'entry_price': signal.entry_price,
+            'stop_loss': signal.stop_loss,
+            'tp1': signal.take_profit_1,
+            'tp2': signal.take_profit_2,
+            'tp3': signal.take_profit_3,
+            'position_size_lots': position.position_size_lots,
+            'risk_amount': position.risk_amount,
+            'risk_reward': signal.risk_reward,
+            'entry_zone_type': signal.entry_zone.zone_type.value if signal.entry_zone else None,
+            'entry_zone_level': signal.entry_zone.price_level if signal.entry_zone else None
+        }
+        
+        await self.telegram.send_ready_to_trade(signal_dict, with_buttons=True)
+                
