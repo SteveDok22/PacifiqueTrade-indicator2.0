@@ -506,3 +506,28 @@ class JobScheduler:
                     str(e)
                 ))            
                 
+    def _run_daily_summary(self):
+        """
+        End of day: Daily summary
+        
+        - Summarize today's signals and trades
+        - Calculate P&L
+        - Send summary to Telegram
+        """
+        logger.info(f"{'='*60}")
+        logger.info(f"RUNNING: Daily Summary")
+        logger.info(f"{'='*60}")
+        
+        try:
+            # TODO: Implement full daily summary with trade tracking
+            
+            logger.info(f"Active signals: {len(self.active_signals)}")
+            logger.info(f"Active trades: {len(self.active_trades)}")
+            
+            # Clear old signals
+            self.active_signals.clear()
+            
+            logger.info(f"✅ Daily summary complete")
+            
+        except Exception as e:
+            logger.error(f"Daily summary failed: {e}", exc_info=True)            
