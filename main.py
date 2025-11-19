@@ -218,3 +218,14 @@ def run_manual_mode(logger, pair=None, date='today'):
     logger.info("  3. Liquidity zone detection")
     logger.info("  4. Signal generation")
     logger.info("\nTo run full system: python main.py --schedule")    
+    
+def run_backtest_mode(logger, start_date, end_date):
+    """Run backtesting"""
+    logger.info(f"Running backtest from {start_date} to {end_date}")
+    
+    # TODO: Implement backtesting
+    # from backtest import BacktestEngine
+    # engine = BacktestEngine(start_date, end_date)
+    # results = engine.run()
+    
+    logger.warning("⚠️  Backtesting not yet implemented - Phase 4")    
