@@ -6,6 +6,7 @@ Run this file to start the indicator in scheduled mode.
 """
 
 import sys
+import io
 import argparse
 import logging
 from pathlib import Path
@@ -18,28 +19,44 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from core import Config, config
 from core.exceptions import PacifiqueTradeError, ConfigurationError
 
+# Fix Windows console encoding for emojis
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 
 # ASCII Art Logo
 LOGO = r"""
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   ██████╗  █████╗  ██████╗██╗███████╗██╗ ██████╗ ██╗   ██╗███████╗║
-║   ██╔══██╗██╔══██╗██╔════╝██║██╔════╝██║██╔═══██╗██║   ██║██╔════╝║
-║   ██████╔╝███████║██║     ██║█████╗  ██║██║   ██║██║   ██║█████╗  ║
-║   ██╔═══╝ ██╔══██║██║     ██║██╔══╝  ██║██║▄▄ ██║██║   ██║██╔══╝  ║
-║   ██║     ██║  ██║╚██████╗██║██║     ██║╚██████╔╝╚██████╔╝███████╗║
-║   ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚═╝╚═╝     ╚═╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝║
-║                                                           ║
-║             T R A D E   I N D I C A T O R   2.0           ║
-║                                                           ║
-║                                                           ║
-║               Built by Stiven | Version 2.0.0             ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════╗
+║                                                                     ║
+║   ██████╗  █████╗  ██████╗██╗███████╗██╗ ██████╗ ██╗   ██╗███████╗  ║
+║   ██╔══██╗██╔══██╗██╔════╝██║██╔════╝██║██╔═══██╗██║   ██║██╔════╝  ║
+║   ██████╔╝███████║██║     ██║█████╗  ██║██║   ██║██║   ██║█████╗    ║
+║   ██╔═══╝ ██╔══██║██║     ██║██╔══╝  ██║██║▄▄ ██║██║   ██║██╔══╝    ║
+║   ██║     ██║  ██║╚██████╗██║██║     ██║╚██████╔╝╚██████╔╝███████╗  ║
+║   ╚═╝     ╚═╝  ╚═╝ ╚═════╝╚═╝╚═╝     ╚═╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝  ║
+║                                                                     ║
+║                  T R A D E   I N D I C A T O R   2.0                ║
+║                                                                     ║
+║                                                                     ║
+║                    Built by Stiven | Version 2.0.0                  ║
+║                                                                     ║
+╚═════════════════════════════════════════════════════════════════════╝
 """
 
 def setup_logging():
     """Configure logging for the application"""
+    import sys
+    
+    # Fix Windows console encoding for emojis
+    if sys.platform == 'win32':
+        try:
+            import codecs
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+            sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+        except Exception:
+            pass  # If this fails, we'll just skip emojis
+    
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     
     if config.LOG_COLOR_ENABLED:
@@ -60,12 +77,12 @@ def setup_logging():
     else:
         formatter = logging.Formatter(log_format)
     
-    # Console handler
-    console_handler = logging.StreamHandler()
+    # Console handler with UTF-8 encoding
+    console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     
     # File handler
-    file_handler = logging.FileHandler(config.LOG_FILE)
+    file_handler = logging.FileHandler(config.LOG_FILE, encoding='utf-8')
     file_handler.setFormatter(logging.Formatter(log_format))
     
     # Root logger
