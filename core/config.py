@@ -128,6 +128,12 @@ class Config:
         self.YFINANCE_MAX_RETRIES = int(os.getenv('YFINANCE_MAX_RETRIES', '3'))
         self.YFINANCE_RETRY_DELAY = int(os.getenv('YFINANCE_RETRY_DELAY', '2'))
         self.DATA_LOOKBACK_DAYS = int(os.getenv('DATA_LOOKBACK_DAYS', '90'))
+        self.MIN_BARS_M15 = int(os.getenv('MIN_BARS_M15', '100'))
+        self.MIN_BARS_M30 = int(os.getenv('MIN_BARS_M30', '100'))
+        self.MIN_BARS_H1 = int(os.getenv('MIN_BARS_H1', '200'))
+        self.MIN_BARS_H4 = int(os.getenv('MIN_BARS_H4', '200'))
+        self.MIN_BARS_D1 = int(os.getenv('MIN_BARS_D1', '100'))
+       
         
         # =================================================================
         # REDIS CACHE SETTINGS
