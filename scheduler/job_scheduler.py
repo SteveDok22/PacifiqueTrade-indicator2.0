@@ -1,19 +1,12 @@
 """
 Job Scheduler Module
 
-Orchestrates the entire trading system with time-based automation:
-- T-4h: Fundamental screening
-- T-2h: Technical analysis
-- T-15min: Signal generation
-- T-0: Market reaction monitoring
-
-Uses APScheduler for cron-style job scheduling.
+Orchestrates the entire trading system with time-based automation.
 """
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.date import DateTrigger
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional
 from enum import Enum
 import asyncio
@@ -74,7 +67,6 @@ class JobScheduler:
     
     def __init__(self):
         """Initialize the scheduler and all components"""
-        
         logger.info("Initializing JobScheduler...")
         
         # Initialize scheduler
@@ -100,10 +92,9 @@ class JobScheduler:
         self.active_trades: Dict[str, Dict] = {}
         
         logger.info(f"✅ JobScheduler initialized for pairs: {[p.value for p in self.pairs]}")
-        
+    
     def start(self):
         """Start the scheduler"""
-        
         logger.info("Starting JobScheduler...")
         
         try:
@@ -127,20 +118,17 @@ class JobScheduler:
             # Send startup notification
             if self.telegram.is_enabled():
                 asyncio.run(self._send_startup_notification())
-            
+        
         except Exception as e:
             logger.error(f"Failed to start scheduler: {e}")
-            raise SchedulerError(
-                job_name="startup",
-                message=str(e)
-            )
+            raise SchedulerError(job_name="startup", message=str(e))
     
     def stop(self):
         """Stop the scheduler"""
         logger.info("Stopping JobScheduler...")
         self.scheduler.shutdown()
         logger.info("✅ JobScheduler stopped")
-        
+    
     def _schedule_london_session(self):
         """Schedule jobs for London session (08:00 UTC)"""
         
@@ -151,7 +139,7 @@ class JobScheduler:
             args=['London'],
             id='london_fundamental',
             name='London: Fundamental Screening (T-4h)',
-            misfire_grace_time=300  # 5 minutes grace
+            misfire_grace_time=300
         )
         
         # T-2h: Technical analysis (06:00 UTC)
@@ -229,8 +217,8 @@ class JobScheduler:
             misfire_grace_time=60
         )
         
-        logger.info("✅ New York session jobs scheduled")    
-        
+        logger.info("✅ New York session jobs scheduled")
+    
     def _schedule_daily_summary(self):
         """Schedule daily summary (22:00 UTC)"""
         
@@ -242,33 +230,21 @@ class JobScheduler:
             misfire_grace_time=600
         )
         
-        logger.info("✅ Daily summary job scheduled")    
-        
-    # ==================================================================
-    # JOB EXECUTION METHODS
-    # ==================================================================
+        logger.info("✅ Daily summary job scheduled")
     
     def _run_fundamental_screening(self, session: str):
-        """
-        T-4h: Fundamental screening
-        
-        - Fetch economic calendar
-        - Filter high-impact news
-        - Send Telegram alert
-        """
+        """T-4h: Fundamental screening"""
         logger.info(f"{'='*60}")
         logger.info(f"RUNNING: Fundamental Screening ({session} session)")
         logger.info(f"{'='*60}")
         
         try:
-            # Run fundamental analysis
             fundamental_signals = self.fundamental_analyzer.analyze_today(self.pairs)
             
             if not fundamental_signals:
                 logger.info("No high-impact news today")
                 return
             
-            # Store signals
             for pair_name, signal in fundamental_signals.items():
                 self.active_signals[f"{pair_name}_{session}"] = {
                     'session': session,
@@ -276,29 +252,19 @@ class JobScheduler:
                     'timestamp': datetime.now(pytz.UTC)
                 }
             
-            # Send Telegram alerts
             if self.telegram.is_enabled():
                 for pair_name, signal in fundamental_signals.items():
                     asyncio.run(self._send_fundamental_alert(pair_name, signal))
             
             logger.info(f"✅ Fundamental screening complete: {len(fundamental_signals)} signals")
-            
+        
         except Exception as e:
             logger.error(f"Fundamental screening failed: {e}", exc_info=True)
             if self.telegram.is_enabled():
-                asyncio.run(self.telegram.send_error_alert(
-                    "Fundamental Screening Error",
-                    str(e)
-                ))    
-                
-     def _run_technical_analysis(self, session: str):
-        """
-        T-2h: Technical analysis
-        
-        - Analyze H4 and H1 trends
-        - Compare with fundamental
-        - Send confirmation alert
-        """
+                asyncio.run(self.telegram.send_error_alert("Fundamental Screening Error", str(e)))
+    
+    def _run_technical_analysis(self, session: str):
+        """T-2h: Technical analysis"""
         logger.info(f"{'='*60}")
         logger.info(f"RUNNING: Technical Analysis ({session} session)")
         logger.info(f"{'='*60}")
@@ -311,47 +277,30 @@ class JobScheduler:
                     logger.debug(f"No fundamental signal for {pair.value}, skipping")
                     continue
                 
-                # Analyze trends
                 trends = self.trend_detector.analyze_multi_timeframe(pair)
-                
-                # Store in signal
                 self.active_signals[signal_key]['trends'] = trends
                 
-                # Check alignment
                 fundamental = self.active_signals[signal_key]['fundamental']
                 confirms = self._check_trend_alignment(fundamental, trends['H4'])
                 
-                # Send Telegram alert
                 if self.telegram.is_enabled():
-                    asyncio.run(self._send_technical_alert(
-                        pair.value, fundamental, trends, confirms
-                    ))
+                    asyncio.run(self._send_technical_alert(pair.value, fundamental, trends, confirms))
                 
                 if not confirms:
-                    logger.info(f"❌ {pair.value}: Trend doesn't confirm fundamental, removing signal")
+                    logger.info(f"❌ {pair.value}: Trend doesn't confirm fundamental")
                     del self.active_signals[signal_key]
                 else:
                     logger.info(f"✅ {pair.value}: Trend confirms fundamental")
             
             logger.info(f"✅ Technical analysis complete")
-            
+        
         except Exception as e:
             logger.error(f"Technical analysis failed: {e}", exc_info=True)
             if self.telegram.is_enabled():
-                asyncio.run(self.telegram.send_error_alert(
-                    "Technical Analysis Error",
-                    str(e)
-                ))
-                
-     def _run_signal_generation(self, session: str):
-        """
-        T-15min: Signal generation
-        
-        - Detect liquidity zones
-        - Combine all factors
-        - Calculate SL/TP
-        - Send READY TO TRADE alert
-        """
+                asyncio.run(self.telegram.send_error_alert("Technical Analysis Error", str(e)))
+    
+    def _run_signal_generation(self, session: str):
+        """T-15min: Signal generation"""
         logger.info(f"{'='*60}")
         logger.info(f"RUNNING: Signal Generation ({session} session)")
         logger.info(f"{'='*60}")
@@ -359,7 +308,6 @@ class JobScheduler:
         try:
             pairs_to_analyze = []
             
-            # Find pairs with confirmed signals
             for signal_key in list(self.active_signals.keys()):
                 if session in signal_key:
                     pair_name = signal_key.split('_')[0]
@@ -371,24 +319,20 @@ class JobScheduler:
                 logger.info("No pairs ready for signal generation")
                 return
             
-            # Generate signals
             signals = self.signal_generator.generate_signals(pairs_to_analyze)
             
             if not signals:
                 logger.info("No valid signals generated")
                 return
             
-            # Calculate position sizes and SL/TP for each signal
             for pair_name, signal in signals.items():
                 try:
-                    # Calculate position size
                     position = self.position_sizer.calculate_position_size(
                         pair=signal.pair,
                         entry_price=signal.entry_price,
-                        stop_loss=signal.entry_price * 0.985  # Temporary, will be calculated properly
+                        stop_loss=signal.entry_price * 0.985
                     )
                     
-                    # Calculate SL/TP
                     sltp_levels = self.sltp_calculator.calculate_sl_tp(
                         pair=signal.pair,
                         direction=signal.direction,
@@ -396,53 +340,41 @@ class JobScheduler:
                         liquidity_zones=signal.liquidity_zones
                     )
                     
-                    # Update signal with risk management
                     signal.stop_loss = sltp_levels.stop_loss
                     signal.take_profit_1 = sltp_levels.take_profit_1
                     signal.take_profit_2 = sltp_levels.take_profit_2
                     signal.take_profit_3 = sltp_levels.take_profit_3
                     signal.risk_reward = sltp_levels.r_multiple_3
                     
-                    # Store complete signal
                     self.active_signals[f"{pair_name}_{session}"]['complete_signal'] = {
                         'signal': signal,
                         'position': position,
                         'sltp': sltp_levels
                     }
                     
-                    # Send READY TO TRADE alert
                     if self.telegram.is_enabled():
                         asyncio.run(self._send_ready_to_trade_alert(signal, position))
                     
                     logger.info(f"✅ {pair_name}: Complete signal generated")
-                    
+                
                 except Exception as e:
                     logger.error(f"Failed to complete signal for {pair_name}: {e}")
                     continue
             
             logger.info(f"✅ Signal generation complete: {len(signals)} signals ready")
-            
+        
         except Exception as e:
             logger.error(f"Signal generation failed: {e}", exc_info=True)
             if self.telegram.is_enabled():
-                asyncio.run(self.telegram.send_error_alert(
-                    "Signal Generation Error",
-                    str(e)
-                ))            
+                asyncio.run(self.telegram.send_error_alert("Signal Generation Error", str(e)))
+    
     def _run_market_reaction(self, session: str):
-        """
-        T-0: Market reaction monitoring
-        
-        - Monitor first 15-30 minutes after open
-        - Check volume and price action
-        - Confirm or cancel entry
-        """
+        """T-0: Market reaction monitoring"""
         logger.info(f"{'='*60}")
         logger.info(f"RUNNING: Market Reaction Monitor ({session} session)")
         logger.info(f"{'='*60}")
         
         try:
-            # Find signals for this session
             for signal_key in list(self.active_signals.keys()):
                 if session not in signal_key:
                     continue
@@ -453,30 +385,23 @@ class JobScheduler:
                 
                 signal = signal_data['signal']
                 pair = signal.pair
-                
-                # Get current price
                 current_price = self.market_data.get_current_price(pair)
                 
-                # Simple validation: check if price moved in expected direction
                 direction = signal.direction
                 entry = signal.entry_price
                 
-                # TODO: Add volume analysis and more sophisticated confirmation
-                # For now, simple price movement check
-                
                 if direction == 'long':
-                    confirmed = current_price >= entry * 0.999  # Within 0.1%
+                    confirmed = current_price >= entry * 0.999
                 else:
                     confirmed = current_price <= entry * 1.001
                 
-                # Send notification
                 if self.telegram.is_enabled():
                     if confirmed:
                         asyncio.run(self.telegram.send_entry_confirmed(
                             pair=pair.value,
                             direction=direction,
                             entry_price=current_price,
-                            volume_increase=150.0,  # Placeholder
+                            volume_increase=150.0,
                             reaction_type="Price confirms direction"
                         ))
                     else:
@@ -486,55 +411,35 @@ class JobScheduler:
                             reason="Price moved against expected direction"
                         ))
                 
-                # Move to active trades if confirmed
                 if confirmed:
                     self.active_trades[pair.value] = signal_data
-                    logger.info(f"✅ {pair.value}: Entry confirmed, moved to active trades")
+                    logger.info(f"✅ {pair.value}: Entry confirmed")
                 else:
                     logger.info(f"❌ {pair.value}: Entry cancelled")
                 
-                # Remove from active signals
                 del self.active_signals[signal_key]
             
             logger.info(f"✅ Market reaction monitoring complete")
-            
+        
         except Exception as e:
             logger.error(f"Market reaction monitoring failed: {e}", exc_info=True)
             if self.telegram.is_enabled():
-                asyncio.run(self.telegram.send_error_alert(
-                    "Market Reaction Error",
-                    str(e)
-                ))            
-                
+                asyncio.run(self.telegram.send_error_alert("Market Reaction Error", str(e)))
+    
     def _run_daily_summary(self):
-        """
-        End of day: Daily summary
-        
-        - Summarize today's signals and trades
-        - Calculate P&L
-        - Send summary to Telegram
-        """
+        """End of day: Daily summary"""
         logger.info(f"{'='*60}")
         logger.info(f"RUNNING: Daily Summary")
         logger.info(f"{'='*60}")
         
         try:
-            # TODO: Implement full daily summary with trade tracking
-            
             logger.info(f"Active signals: {len(self.active_signals)}")
             logger.info(f"Active trades: {len(self.active_trades)}")
-            
-            # Clear old signals
             self.active_signals.clear()
-            
             logger.info(f"✅ Daily summary complete")
-            
+        
         except Exception as e:
-            logger.error(f"Daily summary failed: {e}", exc_info=True)    
-            
-    # ==================================================================
-    # HELPER METHODS
-    # ==================================================================
+            logger.error(f"Daily summary failed: {e}", exc_info=True)
     
     def _check_trend_alignment(self, fundamental, trend) -> bool:
         """Check if trend aligns with fundamental"""
@@ -565,7 +470,7 @@ class JobScheduler:
         if not events:
             return
         
-        event = events[0]  # Main event
+        event = events[0]
         
         await self.telegram.send_pre_market_alert(
             pair=pair_name,
@@ -620,7 +525,8 @@ class JobScheduler:
         }
         
         await self.telegram.send_ready_to_trade(signal_dict, with_buttons=True)
-                
+
+
 def main():
     """Test the Job Scheduler"""
     
@@ -634,7 +540,6 @@ def main():
     print("="*60 + "\n")
     
     try:
-        # Create scheduler
         scheduler = JobScheduler()
         
         print("✅ JobScheduler initialized\n")
@@ -646,15 +551,13 @@ def main():
         
         print("\n" + "-"*60)
         print("To start the scheduler in production:")
-        print("  1. Ensure .env is properly configured")
-        print("  2. Run: python main.py --schedule")
-        print("  3. The system will run continuously")
+        print("  python main.py --schedule")
         print("-"*60)
         
         print("\n" + "="*60)
         print("✅ JOB SCHEDULER TEST COMPLETE!")
         print("="*60 + "\n")
-        
+    
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
         logger.exception("Test failed")
@@ -664,4 +567,4 @@ def main():
 
 
 if __name__ == "__main__":
-    exit(main())                
+    exit(main())
