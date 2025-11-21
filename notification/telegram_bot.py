@@ -98,6 +98,10 @@ class TelegramNotifier:
         
         logger.info(f"✅ Telegram Notifier initialized (Chat ID: {self.chat_id})")
     
+    def is_enabled(self) -> bool:
+        """Check if Telegram is enabled"""
+        return self.enabled
+    
     async def send_message(
         self,
         message: str,
@@ -349,7 +353,8 @@ class TelegramNotifier:
         )
         
         return await self.send_message(message)
-    
+
+
 def main():
     """Test Telegram bot"""
     
