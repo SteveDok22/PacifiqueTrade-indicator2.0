@@ -66,7 +66,7 @@ class TrailingStopManager:
     Never moves stop loss against us (only in profit direction).
     """
     
-     def __init__(self):
+    def __init__(self):
         pass
     
     def should_update_stop(
@@ -284,3 +284,112 @@ class TrailingStopManager:
         
         r_multiple = current_profit / initial_risk
         return r_multiple
+
+
+def main():
+    """Test the Trailing Stop Manager"""
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    print("\n" + "="*60)
+    print("TRAILING STOP MANAGER TEST")
+    print("="*60 + "\n")
+    
+    try:
+        manager = TrailingStopManager()
+        
+        # Simulate a long trade
+        entry = 1.2700
+        initial_stop = 1.2650
+        
+        print("Scenario: Long trade GBP/USD")
+        print(f"  Entry: {entry:.5f}")
+        print(f"  Initial SL: {initial_stop:.5f}\n")
+        
+        # Test 1: Price moves to +1R
+        print("Test 1: Price reaches +1R (1.2750)\n")
+        current_price = 1.2750
+        r_achieved = manager.calculate_r_multiple('long', entry, current_price, initial_stop)
+        
+        update = manager.should_update_stop(
+            direction='long',
+            entry_price=entry,
+            current_price=current_price,
+            current_stop=initial_stop,
+            r_achieved=r_achieved
+        )
+        
+        if update:
+            print(f"✅ Stop Update Triggered:")
+            print(f"   Reason: {update.reason}")
+            print(f"   Old SL: {update.old_stop:.5f}")
+            print(f"   New SL: {update.new_stop:.5f}")
+            print(f"   Profit Locked: {update.profit_locked:.5f}\n")
+            current_stop = update.new_stop
+        else:
+            print("❌ No stop update\n")
+            current_stop = initial_stop
+        
+        # Test 2: Price moves to +2R
+        print("-"*60)
+        print("Test 2: Price reaches +2R (1.2800)\n")
+        current_price = 1.2800
+        r_achieved = manager.calculate_r_multiple('long', entry, current_price, initial_stop)
+        
+        update = manager.should_update_stop(
+            direction='long',
+            entry_price=entry,
+            current_price=current_price,
+            current_stop=current_stop,
+            r_achieved=r_achieved
+        )
+        
+        if update:
+            print(f"✅ Stop Update Triggered:")
+            print(f"   Reason: {update.reason}")
+            print(f"   Old SL: {update.old_stop:.5f}")
+            print(f"   New SL: {update.new_stop:.5f}")
+            print(f"   R-multiple achieved: {r_achieved:.1f}R\n")
+            current_stop = update.new_stop
+        
+        # Test 3: Price moves to +3R
+        print("-"*60)
+        print("Test 3: Price reaches +3R (1.2850)\n")
+        current_price = 1.2850
+        r_achieved = manager.calculate_r_multiple('long', entry, current_price, initial_stop)
+        ema21 = 1.2820  # Simulated EMA21
+        
+        update = manager.should_update_stop(
+            direction='long',
+            entry_price=entry,
+            current_price=current_price,
+            current_stop=current_stop,
+            r_achieved=r_achieved,
+            ema21=ema21
+        )
+        
+        if update:
+            print(f"✅ Stop Update Triggered:")
+            print(f"   Reason: {update.reason}")
+            print(f"   Old SL: {update.old_stop:.5f}")
+            print(f"   New SL: {update.new_stop:.5f}")
+            print(f"   R-multiple achieved: {r_achieved:.1f}R")
+            print(f"   EMA21: {ema21:.5f}\n")
+        
+        print("="*60)
+        print("✅ TRAILING STOP MANAGER TEST COMPLETE!")
+        print("="*60 + "\n")
+        
+    except Exception as e:
+        print(f"\n❌ ERROR: {e}")
+        logger.exception("Test failed")
+        return 1
+    
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())
