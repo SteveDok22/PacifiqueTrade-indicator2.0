@@ -86,7 +86,7 @@ class SLTPCalculator:
     def __init__(self):
         self.min_r_multiple = config.MIN_R_MULTIPLE
         
-     def calculate_sl_tp(
+    def calculate_sl_tp(
         self,
         pair: CurrencyPair,
         direction: str,
