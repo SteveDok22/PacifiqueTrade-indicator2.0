@@ -77,3 +77,49 @@ def tradingview_webhook():
     except Exception as e:
         logger.error(f"Webhook error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+def format_entry_zone_alert(
+    signal_type: str,
+    pair: str,
+    price: float,
+    fvg_top: float = None,
+    fvg_bottom: float = None
+) -> str:
+    """Format Entry Zone alert for Telegram"""
+    
+    direction_emoji = "🟢" if "LONG" in signal_type else "🔴"
+    direction = "LONG" if "LONG" in signal_type else "SHORT"
+    
+    message = f"""
+🎯 <b>TRADINGVIEW ENTRY ZONE DETECTED</b> 🎯
+
+{direction_emoji} <b>Pair:</b> {pair}
+📍 <b>Direction:</b> {direction}
+💰 <b>Current Price:</b> {price:.5f}
+"""
+    
+    if fvg_top and fvg_bottom:
+        message += f"""
+📦 <b>FVG Zone:</b>
+  • Top: {fvg_top:.5f}
+  • Bottom: {fvg_bottom:.5f}
+  • Size: {(fvg_top - fvg_bottom):.5f} ({((fvg_top - fvg_bottom)/price*100):.2f}%)
+"""
+    
+    message += f"""
+✅ <b>Conditions Met:</b>
+  • Liquidity Sweep ✅
+  • RSI Extremum ✅
+  • Volume Burst ✅
+  • FVG Zone ✅
+
+⏰ <b>Time:</b> {datetime.now().strftime('%H:%M:%S UTC')}
+
+🔔 <b>This is an AUTOMATIC alert from TradingView!</b>
+Check the chart immediately!
+"""
+    
+    return message.strip()
+
+
+@app.route('/health', methods=['GET'])
