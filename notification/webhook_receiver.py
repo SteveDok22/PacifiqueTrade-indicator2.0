@@ -123,3 +123,33 @@ Check the chart immediately!
 
 
 @app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "service": "PacifiqueTrade Webhook Receiver",
+        "telegram_enabled": telegram.is_enabled()
+    }), 200
+
+
+def run_webhook_server(host='0.0.0.0', port=5000):
+    """Run the webhook server"""
+    logger.info(f"Starting webhook server on {host}:{port}")
+    app.run(host=host, port=port, debug=False)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    print("\n" + "="*60)
+    print("🌐 TRADINGVIEW WEBHOOK RECEIVER")
+    print("="*60)
+    print(f"Server starting on http://0.0.0.0:5000")
+    print(f"Webhook URL: http://YOUR_SERVER_IP:5000/webhook/tradingview")
+    print(f"Telegram: {'✅ Enabled' if telegram.is_enabled() else '❌ Disabled'}")
+    print("="*60 + "\n")
+    
+    run_webhook_server()
