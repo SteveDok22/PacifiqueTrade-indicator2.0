@@ -1,0 +1,50 @@
+//@version=5
+indicator("PacifiqueTrade Indicator 2.0", overlay=true, max_boxes_count=500, max_lines_count=500)
+
+// ============================================================================
+// INPUT SETTINGS
+// ============================================================================
+
+// FVG Settings
+fvgEnabled = input.bool(true, "Show FVG Zones", group="FVG Settings")
+fvg3Candle = input.bool(true, "3-Candle FVG (Laminar)", group="FVG Settings")
+fvg2Candle = input.bool(true, "2-Candle Imbalance", group="FVG Settings")
+fvgHistoryLimit = input.int(20, "FVG History Limit", minval=1, maxval=100, group="FVG Settings")
+
+// Liquidity Sweep Settings
+sweepEnabled = input.bool(true, "Show Liquidity Sweeps", group="Sweep Settings")
+sweepLookback = input.int(20, "Sweep Lookback Period", minval=5, maxval=100, group="Sweep Settings")
+sweepTolerance = input.float(0.1, "Sweep Tolerance %", minval=0.01, maxval=1.0, group="Sweep Settings")
+
+// RSI Settings
+rsiEnabled = input.bool(true, "Use RSI Filter", group="Entry Filters")
+rsiPeriod = input.int(14, "RSI Period", minval=2, maxval=50, group="Entry Filters")
+rsiOverbought = input.float(70, "RSI Overbought", minval=50, maxval=90, group="Entry Filters")
+rsiOversold = input.float(30, "RSI Oversold", minval=10, maxval=50, group="Entry Filters")
+
+// Volume Settings
+volumeEnabled = input.bool(true, "Use Volume Filter", group="Entry Filters")
+volumeMAPeriod = input.int(99, "Volume MA Period", minval=10, maxval=200, group="Entry Filters")
+volumeMultiplier = input.float(1.5, "Volume Burst Multiplier", minval=1.0, maxval=5.0, group="Entry Filters")
+
+// Entry Zone Settings
+entryZoneEnabled = input.bool(true, "Show Entry Zones", group="Entry Zones")
+entryZoneBullColor = input.color(color.new(color.green, 80), "Long Entry Zone", group="Entry Zones")
+entryZoneBearColor = input.color(color.new(color.red, 80), "Short Entry Zone", group="Entry Zones")
+
+// Webhook Settings
+webhookEnabled = input.bool(false, "Enable Webhook Alerts", group="Webhook")
+webhookURL = input.string("", "Webhook URL (Optional)", group="Webhook")
+
+// ============================================================================
+// CALCULATIONS
+// ============================================================================
+
+// RSI
+rsi = ta.rsi(close, rsiPeriod)
+rsiOverboughtLevel = rsiEnabled and rsi > rsiOverbought
+rsiOversoldLevel = rsiEnabled and rsi < rsiOversold
+
+// Volume
+volumeMA = ta.sma(volume, volumeMAPeriod)
+volumeBurst = volumeEnabled and volume > volumeMA * volumeMultiplier
