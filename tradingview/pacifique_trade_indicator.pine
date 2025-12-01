@@ -48,3 +48,68 @@ rsiOversoldLevel = rsiEnabled and rsi < rsiOversold
 // Volume
 volumeMA = ta.sma(volume, volumeMAPeriod)
 volumeBurst = volumeEnabled and volume > volumeMA * volumeMultiplier
+
+// ============================================================================
+// FVG DETECTION (3-Candle Laminar Gap)
+// ============================================================================
+
+var box[] bullishFVGs = array.new_box()
+var box[] bearishFVGs = array.new_box()
+
+// Bullish FVG: candle[2].high < candle[0].low (gap up)
+bullishFVG = fvg3Candle and high[2] < low[0]
+if bullishFVG
+    fvgTop = low[0]
+    fvgBottom = high[2]
+    fvgLeft = bar_index[1]
+    fvgRight = bar_index + 50  // Extend into future
+    
+    // Create FVG box
+    fvgBox = box.new(
+        left=fvgLeft, 
+        top=fvgTop, 
+        right=fvgRight, 
+        bottom=fvgBottom,
+        border_color=color.new(color.green, 0),
+        bgcolor=color.new(color.green, 85),
+        border_width=1,
+        extend=extend.right,
+        text="FVG Bull",
+        text_color=color.green,
+        text_size=size.small
+    )
+    
+    array.push(bullishFVGs, fvgBox)
+    
+    // Limit history
+    if array.size(bullishFVGs) > fvgHistoryLimit
+        oldBox = array.shift(bullishFVGs)
+        box.delete(oldBox)
+
+// Bearish FVG: candle[2].low > candle[0].high (gap down)
+bearishFVG = fvg3Candle and low[2] > high[0]
+if bearishFVG
+    fvgTop = low[2]
+    fvgBottom = high[0]
+    fvgLeft = bar_index[1]
+    fvgRight = bar_index + 50
+    
+    fvgBox = box.new(
+        left=fvgLeft,
+        top=fvgTop,
+        right=fvgRight,
+        bottom=fvgBottom,
+        border_color=color.new(color.red, 0),
+        bgcolor=color.new(color.red, 85),
+        border_width=1,
+        extend=extend.right,
+        text="FVG Bear",
+        text_color=color.red,
+        text_size=size.small
+    )
+    
+    array.push(bearishFVGs, fvgBox)
+    
+    if array.size(bearishFVGs) > fvgHistoryLimit
+        oldBox = array.shift(bearishFVGs)
+        box.delete(oldBox)
