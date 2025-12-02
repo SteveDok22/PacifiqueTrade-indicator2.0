@@ -157,3 +157,45 @@ if bearishImbalance
         width=1,
         style=line.style_dashed
     )
+
+// ============================================================================
+// LIQUIDITY SWEEP DETECTION
+// ============================================================================
+
+// Find recent high/low
+recentHigh = ta.highest(high, sweepLookback)
+recentLow = ta.lowest(low, sweepLookback)
+
+// Buy-side liquidity sweep (sweep below recent low then rally)
+buySweep = sweepEnabled and 
+           low < recentLow[1] and 
+           close > open and
+           close > close[1]
+
+if buySweep
+    label.new(
+        x=bar_index,
+        y=low,
+        text="💎 BUY SWEEP",
+        style=label.style_label_up,
+        color=color.new(color.green, 0),
+        textcolor=color.white,
+        size=size.normal
+    )
+
+// Sell-side liquidity sweep (sweep above recent high then drop)
+sellSweep = sweepEnabled and
+            high > recentHigh[1] and
+            close < open and
+            close < close[1]
+
+if sellSweep
+    label.new(
+        x=bar_index,
+        y=high,
+        text="💎 SELL SWEEP",
+        style=label.style_label_down,
+        color=color.new(color.red, 0),
+        textcolor=color.white,
+        size=size.normal
+    )
