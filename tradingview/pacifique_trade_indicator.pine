@@ -113,3 +113,47 @@ if bearishFVG
     if array.size(bearishFVGs) > fvgHistoryLimit
         oldBox = array.shift(bearishFVGs)
         box.delete(oldBox)
+
+// Check if FVG filled (price entered the zone)
+for i = 0 to array.size(bullishFVGs) - 1
+    fvgBox = array.get(bullishFVGs, i)
+    fvgTop = box.get_top(fvgBox)
+    fvgBottom = box.get_bottom(fvgBox)
+    
+    // If price filled the FVG, make it transparent
+    if low <= fvgTop and high >= fvgBottom
+        box.set_bgcolor(fvgBox, color.new(color.green, 95))
+
+for i = 0 to array.size(bearishFVGs) - 1
+    fvgBox = array.get(bearishFVGs, i)
+    fvgTop = box.get_top(fvgBox)
+    fvgBottom = box.get_bottom(fvgBox)
+    
+    if low <= fvgTop and high >= fvgBottom
+        box.set_bgcolor(fvgBox, color.new(color.red, 95))
+
+// ============================================================================
+// 2-CANDLE IMBALANCE DETECTION
+// ============================================================================
+
+// Bullish imbalance: candle[1].high < candle[0].low
+bullishImbalance = fvg2Candle and high[1] < low[0]
+if bullishImbalance
+    line.new(
+        x1=bar_index[1], y1=high[1],
+        x2=bar_index, y2=high[1],
+        color=color.new(color.green, 50),
+        width=1,
+        style=line.style_dashed
+    )
+
+// Bearish imbalance: candle[1].low > candle[0].high  
+bearishImbalance = fvg2Candle and low[1] > high[0]
+if bearishImbalance
+    line.new(
+        x1=bar_index[1], y1=low[1],
+        x2=bar_index, y2=low[1],
+        color=color.new(color.red, 50),
+        width=1,
+        style=line.style_dashed
+    )
