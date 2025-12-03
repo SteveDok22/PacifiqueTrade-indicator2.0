@@ -248,3 +248,39 @@ if longEntryCondition and entryZoneEnabled
         // Webhook alert
         if webhookEnabled
             alert('{"type":"LONG_ENTRY","pair":"' + syminfo.ticker + '","price":' + str.tostring(close) + ',"fvg_top":' + str.tostring(nearestFVGTop) + ',"fvg_bottom":' + str.tostring(nearestFVGBottom) + '}', alert.freq_once_per_bar)    
+
+// Short Entry Zone Conditions
+shortEntryCondition = sellSweep and
+                      (not rsiEnabled or rsiOverboughtLevel) and
+                      (not volumeEnabled or volumeBurst)
+
+if shortEntryCondition and entryZoneEnabled
+    var float nearestFVGTop = na
+    var float nearestFVGBottom = na
+    
+    for i = 0 to array.size(bearishFVGs) - 1
+        fvgBox = array.get(bearishFVGs, i)
+        fvgTop = box.get_top(fvgBox)
+        fvgBottom = box.get_bottom(fvgBox)
+        
+        if close >= fvgBottom * 0.999 and close <= fvgTop * 1.001
+            nearestFVGTop := fvgTop
+            nearestFVGBottom := fvgBottom
+            break
+    
+    if not na(nearestFVGTop)
+        entryBox = box.new(
+            left=bar_index,
+            top=nearestFVGTop,
+            right=bar_index + 10,
+            bottom=nearestFVGBottom,
+            border_color=color.new(color.red, 0),
+            bgcolor=entryZoneBearColor,
+            border_width=2,
+            text="🎯 SHORT ENTRY",
+            text_color=color.red,
+            text_size=size.large
+        )
+        
+        if webhookEnabled
+            alert('{"type":"SHORT_ENTRY","pair":"' + syminfo.ticker + '","price":' + str.tostring(close) + ',"fvg_top":' + str.tostring(nearestFVGTop) + ',"fvg_bottom":' + str.tostring(nearestFVGBottom) + '}', alert.freq_once_per_bar)
