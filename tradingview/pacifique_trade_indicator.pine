@@ -284,3 +284,20 @@ if shortEntryCondition and entryZoneEnabled
         
         if webhookEnabled
             alert('{"type":"SHORT_ENTRY","pair":"' + syminfo.ticker + '","price":' + str.tostring(close) + ',"fvg_top":' + str.tostring(nearestFVGTop) + ',"fvg_bottom":' + str.tostring(nearestFVGBottom) + '}', alert.freq_once_per_bar)
+
+// ============================================================================
+// PLOTS & VISUAL INDICATORS
+// ============================================================================
+
+// RSI levels (subplot)
+plot(rsiEnabled ? rsi : na, "RSI", color=color.purple, linewidth=2)
+hline(rsiOverbought, "Overbought", color=color.red, linestyle=hline.style_dashed)
+hline(rsiOversold, "Oversold", color=color.green, linestyle=hline.style_dashed)
+hline(50, "Midline", color=color.gray, linestyle=hline.style_dotted)
+
+// Volume Burst markers
+plotshape(volumeBurst, style=shape.circle, location=location.belowbar, color=color.new(color.orange, 0), size=size.tiny, title="Volume Burst")
+
+// Background color for entry conditions
+bgcolor(longEntryCondition ? color.new(color.green, 95) : na, title="Long Setup BG")
+bgcolor(shortEntryCondition ? color.new(color.red, 95) : na, title="Short Setup BG")
