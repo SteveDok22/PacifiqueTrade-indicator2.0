@@ -43,30 +43,21 @@ class MessageFormatter:
     ) -> str:
         """
         Generate TradingView chart URL
-        
+    
         Args:
             pair: Currency pair (e.g., "GBP/USD")
-            interval: Timeframe in minutes (1, 5, 15, 30, 60, 240, D, W, M)
-                     1 = 1 minute
-                     5 = 5 minutes
-                     15 = 15 minutes
-                     30 = 30 minutes
-                     60 = 1 hour
-                     240 = 4 hours
-                     D = Daily
-                     W = Weekly
-                     M = Monthly
-        
+            interval: Timeframe in minutes (5, 15, 30, 60, 240, D, W)
+    
         Returns:
-            TradingView URL with symbol and interval
+            TradingView URL
         """
-        # Convert pair format (GBP/USD → GBPUSD)
-        symbol = pair.replace("/", "").replace(" ", "").upper()
-        
-        # Build URL - use FX_IDC for forex pairs
-        url = f"https://www.tradingview.com/chart/?symbol=FX_IDC:{symbol}&interval={interval}"
-        
-        return url
+    # Convert pair format (GBP/USD → GBPUSD)
+    symbol = pair.replace("/", "")
+    
+    # Build URL
+    url = f"https://www.tradingview.com/chart/?symbol=FX_IDC:{symbol}&interval={interval}"
+    
+    return url
     
     @staticmethod
     def get_tradingview_urls_all_timeframes(pair: str) -> Dict[str, str]:
