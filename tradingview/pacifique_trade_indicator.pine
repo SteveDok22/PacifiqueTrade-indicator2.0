@@ -199,3 +199,52 @@ if sellSweep
         textcolor=color.white,
         size=size.normal
     )
+
+// ============================================================================
+// ENTRY ZONE DETECTION
+// ============================================================================
+
+// Long Entry Zone Conditions:
+// 1. Buy Sweep occurred
+// 2. RSI oversold
+// 3. Volume burst
+// 4. Inside or near bullish FVG
+
+longEntryCondition = buySweep and 
+                     (not rsiEnabled or rsiOversoldLevel) and
+                     (not volumeEnabled or volumeBurst)
+
+if longEntryCondition and entryZoneEnabled
+    // Find nearest bullish FVG
+    var float nearestFVGTop = na
+    var float nearestFVGBottom = na
+    
+    for i = 0 to array.size(bullishFVGs) - 1
+        fvgBox = array.get(bullishFVGs, i)
+        fvgTop = box.get_top(fvgBox)
+        fvgBottom = box.get_bottom(fvgBox)
+        
+        // Check if current price is near FVG
+        if close >= fvgBottom * 0.999 and close <= fvgTop * 1.001
+            nearestFVGTop := fvgTop
+            nearestFVGBottom := fvgBottom
+            break
+    
+    // Draw Entry Zone
+    if not na(nearestFVGTop)
+        entryBox = box.new(
+            left=bar_index,
+            top=nearestFVGTop,
+            right=bar_index + 10,
+            bottom=nearestFVGBottom,
+            border_color=color.new(color.lime, 0),
+            bgcolor=entryZoneBullColor,
+            border_width=2,
+            text="🎯 LONG ENTRY",
+            text_color=color.lime,
+            text_size=size.large
+        )
+        
+        // Webhook alert
+        if webhookEnabled
+            alert('{"type":"LONG_ENTRY","pair":"' + syminfo.ticker + '","price":' + str.tostring(close) + ',"fvg_top":' + str.tostring(nearestFVGTop) + ',"fvg_bottom":' + str.tostring(nearestFVGBottom) + '}', alert.freq_once_per_bar)    
