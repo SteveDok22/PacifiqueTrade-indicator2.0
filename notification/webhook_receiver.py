@@ -78,6 +78,7 @@ def tradingview_webhook():
         logger.error(f"Webhook error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
+
 def format_entry_zone_alert(
     signal_type: str,
     pair: str,
