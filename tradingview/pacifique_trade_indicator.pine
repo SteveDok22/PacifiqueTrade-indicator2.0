@@ -247,7 +247,7 @@ if longEntryCondition and entryZoneEnabled
         
         // Webhook alert
         if webhookEnabled
-            alert('{"type":"LONG_ENTRY","pair":"' + syminfo.ticker + '","price":' + str.tostring(close) + ',"fvg_top":' + str.tostring(nearestFVGTop) + ',"fvg_bottom":' + str.tostring(nearestFVGBottom) + '}', alert.freq_once_per_bar)    
+            alert('{"type":"LONG_ENTRY","pair":"' + syminfo.ticker + '","price":' + str.tostring(close) + ',"fvg_top":' + str.tostring(nearestFVGTop) + ',"fvg_bottom":' + str.tostring(nearestFVGBottom) + '}', alert.freq_once_per_bar)
 
 // Short Entry Zone Conditions
 shortEntryCondition = sellSweep and
