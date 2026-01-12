@@ -180,4 +180,66 @@ class PositionMonitor:
         if stop_hit:
             del self.active_positions[position_key]
             await self._send_stop_hit_alert(position, current_price, profit_usd)
+
+    async def _send_tp_hit_alert(
+        self,
+        position: Dict,
+        tp_level: int,
+        current_price: float,
+        profit_pips: float,
+        profit_usd: float,
+        r_multiple: float
+    ):
+        """Send TP hit alert"""
+        
+        actions = {
+            1: "Moved stop to BREAKEVEN (33% position)",
+            2: "Closed 33% position at +2R, trailing remaining 34%",
+            3: "All TPs hit! Position fully closed"
+        }
+        
+        message = f"""
+🎯 <b>TP{tp_level} HIT!</b> 🎯
+
+📊 <b>Pair:</b> {position['pair'].value}
+📍 <b>Direction:</b> {position['direction'].upper()}
+
+💰 <b>Status:</b>
+  • Entry: {position['entry_price']:.5f}
+  • Current: {current_price:.5f}
+  • TP{tp_level}: {position[f'tp{tp_level}']:.5f}
+
+📈 <b>Profit:</b>
+  • Pips: +{profit_pips:.1f}
+  • USD: +${profit_usd:.2f}
+  • R-Multiple: +{r_multiple:.1f}R
+
+✅ <b>Action:</b> {actions[tp_level]}
+
+{"🎉 Position fully closed with profit!" if tp_level == 3 else "💡 Let remaining position run!"}
+"""
+        
+        await self.telegram.send_message(message.strip(), parse_mode='HTML')
     
+    async def _send_stop_update_alert(
+        self,
+        position: Dict,
+        update,
+        current_price: float
+    ):
+        """Send trailing stop update alert"""
+        
+        message = f"""
+📊 <b>TRAILING STOP UPDATED</b> 📊
+
+📈 <b>Pair:</b> {position['pair'].value}
+
+✅ <b>Update:</b>
+  • Old Stop: {update.old_stop:.5f}
+  • New Stop: {update.new_stop:.5f}
+  • Current Price: {current_price:.5f}
+
+💡 <b>Reason:</b> {update.reason}
+
+🔒 Profit locked in: {update.profit_locked:.5f} points
+"""
