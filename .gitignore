@@ -34,3 +34,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# NSSM Service Manager
+nssm-2.24/
+nssm.zip
