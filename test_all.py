@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 
 print("\n" + "="*70)
-print(" PACIFIQUETRADE INDICATOR 2.0 - ПОЛНАЯ ПРОВЕРКА")
+print("🔥 PACIFIQUETRADE INDICATOR 2.0 - ПОЛНАЯ ПРОВЕРКА")
 print("="*70 + "\n")
 
 results = {
@@ -30,11 +30,11 @@ def test_module(name, test_func):
         print(f"Тест {results['passed'] + results['failed'] + 1}: {name}")
         print("-"*70)
         test_func()
-        print(f" {name} - PASSED")
+        print(f"✅ {name} - PASSED")
         results["passed"] += 1
         return True
     except Exception as e:
-        print(f" {name} - FAILED: {e}")
+        print(f"❌ {name} - FAILED: {e}")
         results["failed"] += 1
         results["errors"].append({"test": name, "error": str(e)})
         return False
@@ -45,7 +45,7 @@ def test_module(name, test_func):
 def test_core_config():
     from core.config import config
     print(f"Trading Pairs: {config.TRADING_PAIRS_STR}")
-    print(f"Account Balance: \")
+    print(f"Account Balance: ${config.ACCOUNT_BALANCE:,.2f}")
     print(f"Risk: {config.RISK_PERCENTAGE}%")
     print(f"Telegram Enabled: {config.TELEGRAM_ENABLED}")
     assert config.ACCOUNT_BALANCE > 0, "Account balance must be positive"
@@ -81,7 +81,6 @@ def test_forex_factory():
     if events:
         print(f"Sample event: {events[0].event_name} ({events[0].currency})")
     
-    # Test high-impact filter
     high_impact = api.filter_high_impact(events)
     print(f"High-impact events: {len(high_impact)}")
 
@@ -101,7 +100,6 @@ def test_market_data():
     print(f"Date range: {df.index[0]} to {df.index[-1]}")
     print(f"Latest close: {df['close'].iloc[-1]:.5f}")
     
-    # Get current price
     current_price = fetcher.get_current_price(CurrencyPair.GBP_USD)
     print(f"Current GBP/USD: {current_price:.5f}")
 
@@ -203,7 +201,7 @@ def test_position_sizer():
     )
     
     print(f"Position Size: {position.position_size_lots:.2f} lots")
-    print(f"Risk Amount: \")
+    print(f"Risk Amount: ${position.risk_amount:.2f}")
     print(f"Stop Distance: {position.stop_distance_pips:.1f} pips")
 
 test_module("Position Sizer", test_position_sizer)
@@ -238,7 +236,6 @@ def test_trailing_stop():
     
     manager = TrailingStopManager()
     
-    # Simulate trade at +1R
     r_achieved = 1.0
     update = manager.should_update_stop(
         direction='long',
@@ -265,7 +262,6 @@ def test_message_templates():
     
     formatter = MessageFormatter()
     
-    # Test pre-market alert
     msg = formatter.format_pre_market_alert(
         pair="GBP/USD",
         fundamental_direction="USD Weaker",
@@ -289,16 +285,16 @@ def test_telegram_bot():
     from core.config import config
     
     if not config.TELEGRAM_ENABLED:
-        print("  Telegram disabled in .env (это нормально для тестирования)")
+        print("⚠️  Telegram disabled in .env (это нормально для тестирования)")
         return
     
     telegram = TelegramNotifier()
     
     if telegram.is_enabled():
-        print(f" Telegram connected (Chat ID: {config.TELEGRAM_CHAT_ID})")
-        print("  Не отправляем тестовое сообщение чтобы не спамить")
+        print(f"✅ Telegram connected (Chat ID: {config.TELEGRAM_CHAT_ID})")
+        print("⚠️  Не отправляем тестовое сообщение чтобы не спамить")
     else:
-        print("  Telegram not configured")
+        print("⚠️  Telegram not configured")
 
 test_module("Telegram Bot", test_telegram_bot)
 
@@ -312,6 +308,7 @@ def test_scheduler():
     print(f"Scheduler initialized")
     print(f"Monitoring pairs: {[p.value for p in scheduler.pairs]}")
     print(f"Telegram enabled: {scheduler.telegram.is_enabled()}")
+    print(f"Position Monitor: {'Active' if scheduler.position_monitor else 'Disabled'}")
 
 test_module("Job Scheduler", test_scheduler)
 
@@ -319,24 +316,25 @@ test_module("Job Scheduler", test_scheduler)
 # FINAL RESULTS
 # =============================================================================
 print("\n" + "="*70)
-print(" РЕЗУЛЬТАТЫ ТЕСТОВ")
+print("📊 РЕЗУЛЬТАТЫ ТЕСТОВ")
 print("="*70)
-print(f" Passed: {results['passed']}")
-print(f" Failed: {results['failed']}")
-print(f" Success Rate: {results['passed']/(results['passed']+results['failed'])*100:.1f}%")
+print(f"✅ Passed: {results['passed']}")
+print(f"❌ Failed: {results['failed']}")
+print(f"📊 Success Rate: {results['passed']/(results['passed']+results['failed'])*100:.1f}%")
 
 if results['failed'] > 0:
-    print("\n Ошибки:")
+    print("\n❌ Ошибки:")
     for error in results['errors']:
-        print(f"   {error['test']}: {error['error']}")
+        print(f"  • {error['test']}: {error['error']}")
 
 print("\n" + "="*70)
 
 if results['failed'] == 0:
-    print(" ВСЕ ТЕСТЫ ПРОШЛИ УСПЕШНО!")
+    print("🎉 ВСЕ ТЕСТЫ ПРОШЛИ УСПЕШНО!")
     print("Система готова к запуску!")
+    print("\n🚀 Запускай: python main.py --schedule")
 else:
-    print("  Некоторые тесты не прошли. Проверь ошибки выше.")
+    print("⚠️  Некоторые тесты не прошли. Проверь ошибки выше.")
 
 print("="*70 + "\n")
 
