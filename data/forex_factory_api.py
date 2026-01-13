@@ -159,6 +159,25 @@ class ForexFactoryAPI:
             logger.error(f"Unexpected error fetching calendar: {e}")
             return self._get_mock_events()
     
+    def filter_high_impact(self, events: List[EconomicEvent]) -> List[EconomicEvent]:
+        """
+        Filter events to only HIGH impact
+    
+        Args:
+            events: List of economic events
+    
+        Returns:
+            List of high-impact events only
+        """
+        high_impact_events = [
+            event for event in events 
+            if event.impact == NewsImpact.HIGH
+       ]
+    
+        logger.info(f"Filtered to {len(high_impact_events)} high-impact events (from {len(events)} total)")
+    
+        return high_impact_events
+    
     def _parse_calendar(self, html: str, target_date: datetime) -> List[EconomicEvent]:
         """Parse calendar HTML"""
         soup = BeautifulSoup(html, 'html.parser')
