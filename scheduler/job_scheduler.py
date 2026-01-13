@@ -12,6 +12,7 @@ from enum import Enum
 import asyncio
 import logging
 import pytz
+import threading
 
 import sys
 from pathlib import Path
@@ -83,6 +84,22 @@ class JobScheduler:
         
         # Initialize Telegram notifier
         self.telegram = TelegramNotifier()
+        
+        # Initialize Position Monitor
+        try:
+            from risk.position_monitor import PositionMonitor, monitor_loop
+            self.position_monitor = PositionMonitor()
+            
+            # Start position monitoring in background thread
+            def run_monitor():
+                asyncio.run(monitor_loop(self.position_monitor, interval=60))
+            
+            self.monitor_thread = threading.Thread(target=run_monitor, daemon=True)
+            self.monitor_thread.start()
+            logger.info("✅ Position Monitor started in background")
+        except Exception as e:
+            logger.warning(f"Position Monitor not available: {e}")
+            self.position_monitor = None
         
         # Get trading pairs from config
         self.pairs = config.get_trading_pairs()
@@ -355,6 +372,19 @@ class JobScheduler:
                     if self.telegram.is_enabled():
                         asyncio.run(self._send_ready_to_trade_alert(signal, position))
                     
+                    # Add position to monitor when entry confirmed
+                    if self.position_monitor and config.DRY_RUN == False:
+                        self.position_monitor.add_position(
+                            pair=signal.pair,
+                            direction=signal.direction,
+                            entry_price=signal.entry_price,
+                            stop_loss=signal.stop_loss,
+                            tp1=signal.take_profit_1,
+                            tp2=signal.take_profit_2,
+                            tp3=signal.take_profit_3,
+                            position_size_lots=position.position_size_lots
+                        )
+                    
                     logger.info(f"✅ {pair_name}: Complete signal generated")
                 
                 except Exception as e:
@@ -435,6 +465,17 @@ class JobScheduler:
         try:
             logger.info(f"Active signals: {len(self.active_signals)}")
             logger.info(f"Active trades: {len(self.active_trades)}")
+            
+            # Send daily summary to Telegram if there were any trades
+            if self.telegram.is_enabled() and (self.active_signals or self.active_trades):
+                asyncio.run(self.telegram.send_message(
+                    f"📊 <b>Daily Summary</b>\n\n"
+                    f"Signals generated: {len(self.active_signals)}\n"
+                    f"Trades taken: {len(self.active_trades)}\n\n"
+                    f"See you tomorrow! 🌙",
+                    parse_mode='HTML'
+                ))
+            
             self.active_signals.clear()
             logger.info(f"✅ Daily summary complete")
         
@@ -459,7 +500,8 @@ class JobScheduler:
             "🚀 <b>PacifiqueTrade Indicator 2.0 Started</b>\n\n"
             f"✅ System initialized\n"
             f"📊 Monitoring: {', '.join([p.value for p in self.pairs])}\n"
-            f"⏰ Scheduler: Active\n\n"
+            f"⏰ Scheduler: Active\n"
+            f"📍 Position Monitor: {'Active' if self.position_monitor else 'Disabled'}\n\n"
             "Ready to trade! 📈",
             parse_mode='HTML'
         )
@@ -548,6 +590,7 @@ def main():
             print(f"  • {pair.value}")
         
         print("\nTelegram enabled:", scheduler.telegram.is_enabled())
+        print("Position Monitor:", "Active" if scheduler.position_monitor else "Disabled")
         
         print("\n" + "-"*60)
         print("To start the scheduler in production:")
