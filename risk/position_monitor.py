@@ -242,4 +242,111 @@ class PositionMonitor:
 💡 <b>Reason:</b> {update.reason}
 
 🔒 Profit locked in: {update.profit_locked:.5f} points
+""" 
+        await self.telegram.send_message(message.strip(), parse_mode='HTML')
+    
+    async def _send_stop_hit_alert(
+        self,
+        position: Dict,
+        exit_price: float,
+        profit_usd: float
+    ):
+        """Send stop loss hit alert"""
+        
+        result_emoji = "✅" if profit_usd > 0 else "❌"
+        result_text = "PROFIT" if profit_usd > 0 else "LOSS"
+        
+        message = f"""
+{result_emoji} <b>STOP HIT - POSITION CLOSED</b>
+
+📊 <b>Pair:</b> {position['pair'].value}
+📍 <b>Direction:</b> {position['direction'].upper()}
+
+💰 <b>Final Result:</b>
+  • Entry: {position['entry_price']:.5f}
+  • Exit: {exit_price:.5f}
+  • P&L: ${profit_usd:+.2f}
+
+📊 <b>Status:</b> {result_text}
+
+{"🎉 Trade successful!" if profit_usd > 0 else "📚 Review and learn from this trade"}
 """
+        
+        await self.telegram.send_message(message.strip(), parse_mode='HTML')
+    
+    async def _send_position_closed_alert(self, position: Dict, profit_usd: float):
+        """Send position fully closed alert"""
+        
+        duration = datetime.now() - position['opened_at']
+        hours = duration.total_seconds() / 3600
+        
+        message = f"""
+🎉 <b>POSITION FULLY CLOSED</b> 🎉
+
+📊 <b>Pair:</b> {position['pair'].value}
+📍 <b>Direction:</b> {position['direction'].upper()}
+
+✅ <b>All TPs Hit:</b>
+  • TP1: ✅ (Moved to BE)
+  • TP2: ✅ (Closed 33%)
+  • TP3: ✅ (Closed 67%)
+
+💰 <b>Total Profit:</b> ${profit_usd:+.2f}
+
+⏱️ <b>Duration:</b> {hours:.1f} hours
+
+🎯 <b>Perfect execution!</b> Well done!
+"""
+        
+        await self.telegram.send_message(message.strip(), parse_mode='HTML')
+
+
+async def monitor_loop(monitor: PositionMonitor, interval: int = 60):
+    """Main monitoring loop"""
+    logger.info(f"Starting position monitor (check every {interval}s)")
+    
+    while True:
+        try:
+            await monitor.check_positions()
+            await asyncio.sleep(interval)
+        except KeyboardInterrupt:
+            logger.info("Monitor stopped by user")
+            break
+        except Exception as e:
+            logger.error(f"Monitor error: {e}", exc_info=True)
+            await asyncio.sleep(interval)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    
+    print("\n" + "="*60)
+    print("📊 POSITION MONITOR TEST")
+    print("="*60 + "\n")
+    
+    from core.enums import CurrencyPair
+    
+    monitor = PositionMonitor()
+    
+    # Add test position
+    monitor.add_position(
+        pair=CurrencyPair.GBP_USD,
+        direction='long',
+        entry_price=1.2700,
+        stop_loss=1.2650,
+        tp1=1.2750,
+        tp2=1.2800,
+        tp3=1.2850,
+        position_size_lots=0.2
+    )
+    
+    print("✅ Test position added")
+    print(f"Active positions: {len(monitor.active_positions)}")
+    print("\nStarting monitor loop...")
+    print("Press Ctrl+C to stop\n")
+    
+    # Run monitor
+    asyncio.run(monitor_loop(monitor, interval=10))
