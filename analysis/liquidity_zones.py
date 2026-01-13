@@ -75,6 +75,11 @@ class LiquidityZoneDetector:
     
     def __init__(self):
         self.fetcher = MarketDataFetcher()
+        
+        # Configuration from config
+        self.equal_level_tolerance = config.EQUAL_LEVEL_TOLERANCE
+        self.min_touches = config.MIN_TOUCHES
+        self.swing_detection_window = 5  # Look 5 candles left/right for swing points
     
     def detect_all_zones(
         self,
@@ -130,130 +135,142 @@ class LiquidityZoneDetector:
                 reason=str(e)
             )
     
-    def _detect_equal_highs(self, df: pd.DataFrame) -> List[LiquidityZone]:
+    def _detect_equal_highs(
+        self,
+        data: pd.DataFrame,
+        tolerance: float = None
+    ) -> List[LiquidityZone]:
         """
-        Detect Equal Highs
+        Detect Equal Highs (resistance with multiple touches)
         
         Equal Highs = Multiple swing highs at approximately same level
-        Indicates resistance and potential sell-side liquidity
         """
+        if tolerance is None:
+            tolerance = self.equal_level_tolerance
+        
         zones = []
-        tolerance = config.EQUAL_LEVEL_TOLERANCE
-        min_touches = config.MIN_TOUCHES
         
-        # Find swing highs
-        df['swing_high'] = (
-            (df['high'] > df['high'].shift(1)) &
-            (df['high'] > df['high'].shift(-1))
-        )
+        # Find swing highs (local maxima)
+        swing_highs = data[data['high'] == data['high'].rolling(
+            window=self.swing_detection_window, 
+            center=True
+        ).max()].copy()
         
-        swing_highs = df[df['swing_high']].copy()
-        
-        if len(swing_highs) < min_touches:
+        if len(swing_highs) < 2:
             return zones
         
-        # Group similar highs
-        high_levels = swing_highs['high'].values
-        indices = swing_highs.index.tolist()
+        # Group nearby swing highs
+        swing_highs = swing_highs.reset_index()
+        processed = set()
         
-        for i, level in enumerate(high_levels):
+        for i in range(len(swing_highs) - 1):
+            if i in processed:
+                continue
+            
+            current_high = swing_highs.iloc[i]['high']
+            current_idx = swing_highs.iloc[i]['time']
+            
+            # Find all swing highs within tolerance
             similar_highs = []
             similar_indices = []
             
-            for j, other_level in enumerate(high_levels):
-                # Check if within tolerance
-                if abs(level - other_level) / level <= tolerance:
-                    similar_highs.append(other_level)
-                    similar_indices.append(indices[j])
-            
-            if len(similar_highs) >= min_touches:
-                # Calculate average level and range
-                avg_level = np.mean(similar_highs)
-                price_range = (min(similar_highs), max(similar_highs))
+            for j in range(i, len(swing_highs)):
+                if j in processed:
+                    continue
                 
-                # Calculate strength based on touches
-                strength = min(5, len(similar_highs))
+                compare_high = swing_highs.iloc[j]['high']
+                
+                if abs(compare_high - current_high) / current_high <= tolerance:
+                    similar_highs.append(compare_high)
+                    similar_indices.append(swing_highs.iloc[j]['time'])
+                    processed.add(j)
+            
+            # If we found multiple touches at same level
+            if len(similar_highs) >= self.min_touches:
+                avg_level = sum(similar_highs) / len(similar_highs)
                 
                 zone = LiquidityZone(
                     zone_type=LiquidityZoneType.EQUAL_HIGHS,
                     price_level=avg_level,
-                    price_range=price_range,
-                    strength=strength,
+                    price_range=(min(similar_highs), max(similar_highs)),
+                    strength=min(len(similar_highs), 5),
                     touches=len(similar_highs),
-                    time_detected=df.iloc[similar_indices[-1]].name,
-                    candle_index=similar_indices[-1]
+                    time_detected=current_idx,
+                    candle_index=int(data.index.get_loc(current_idx))
                 )
                 
-                # Avoid duplicates
-                if not any(z.zone_type == LiquidityZoneType.EQUAL_HIGHS and 
-                          abs(z.price_level - zone.price_level) / zone.price_level < tolerance 
-                          for z in zones):
-                    zones.append(zone)
+                zones.append(zone)
+                logger.debug(f"Equal High detected @ {avg_level:.5f} ({len(similar_highs)} touches)")
         
-        logger.debug(f"Found {len(zones)} Equal Highs zones")
         return zones
     
-    def _detect_equal_lows(self, df: pd.DataFrame) -> List[LiquidityZone]:
+    def _detect_equal_lows(
+        self,
+        data: pd.DataFrame,
+        tolerance: float = None
+    ) -> List[LiquidityZone]:
         """
-        Detect Equal Lows
+        Detect Equal Lows (support with multiple touches)
         
         Equal Lows = Multiple swing lows at approximately same level
-        Indicates support and potential buy-side liquidity
         """
+        if tolerance is None:
+            tolerance = self.equal_level_tolerance
+        
         zones = []
-        tolerance = config.EQUAL_LEVEL_TOLERANCE
-        min_touches = config.MIN_TOUCHES
         
-        # Find swing lows
-        df['swing_low'] = (
-            (df['low'] < df['low'].shift(1)) &
-            (df['low'] < df['low'].shift(-1))
-        )
+        # Find swing lows (local minima)
+        swing_lows = data[data['low'] == data['low'].rolling(
+            window=self.swing_detection_window,
+            center=True
+        ).min()].copy()
         
-        swing_lows = df[df['swing_low']].copy()
-        
-        if len(swing_lows) < min_touches:
+        if len(swing_lows) < 2:
             return zones
         
-        # Group similar lows
-        low_levels = swing_lows['low'].values
-        indices = swing_lows.index.tolist()
+        # Group nearby swing lows
+        swing_lows = swing_lows.reset_index()
+        processed = set()
         
-        for i, level in enumerate(low_levels):
+        for i in range(len(swing_lows) - 1):
+            if i in processed:
+                continue
+            
+            current_low = swing_lows.iloc[i]['low']
+            current_idx = swing_lows.iloc[i]['time']
+            
+            # Find all swing lows within tolerance
             similar_lows = []
             similar_indices = []
             
-            for j, other_level in enumerate(low_levels):
-                # Check if within tolerance
-                if abs(level - other_level) / level <= tolerance:
-                    similar_lows.append(other_level)
-                    similar_indices.append(indices[j])
-            
-            if len(similar_lows) >= min_touches:
-                # Calculate average level and range
-                avg_level = np.mean(similar_lows)
-                price_range = (min(similar_lows), max(similar_lows))
+            for j in range(i, len(swing_lows)):
+                if j in processed:
+                    continue
                 
-                # Calculate strength
-                strength = min(5, len(similar_lows))
+                compare_low = swing_lows.iloc[j]['low']
+                
+                if abs(compare_low - current_low) / current_low <= tolerance:
+                    similar_lows.append(compare_low)
+                    similar_indices.append(swing_lows.iloc[j]['time'])
+                    processed.add(j)
+            
+            # If we found multiple touches at same level
+            if len(similar_lows) >= self.min_touches:
+                avg_level = sum(similar_lows) / len(similar_lows)
                 
                 zone = LiquidityZone(
                     zone_type=LiquidityZoneType.EQUAL_LOWS,
                     price_level=avg_level,
-                    price_range=price_range,
-                    strength=strength,
+                    price_range=(min(similar_lows), max(similar_lows)),
+                    strength=min(len(similar_lows), 5),
                     touches=len(similar_lows),
-                    time_detected=df.iloc[similar_indices[-1]].name,
-                    candle_index=similar_indices[-1]
+                    time_detected=current_idx,
+                    candle_index=int(data.index.get_loc(current_idx))
                 )
                 
-                # Avoid duplicates
-                if not any(z.zone_type == LiquidityZoneType.EQUAL_LOWS and 
-                          abs(z.price_level - zone.price_level) / zone.price_level < tolerance 
-                          for z in zones):
-                    zones.append(zone)
+                zones.append(zone)
+                logger.debug(f"Equal Low detected @ {avg_level:.5f} ({len(similar_lows)} touches)")
         
-        logger.debug(f"Found {len(zones)} Equal Lows zones")
         return zones
     
     def _detect_stop_hunts(self, df: pd.DataFrame) -> List[LiquidityZone]:
@@ -439,7 +456,7 @@ def main():
         
         print("Zones by type:")
         for zone_type, count in zone_counts.items():
-            print(f"   {zone_type}: {count}")
+            print(f"  • {zone_type}: {count}")
         
         # Test 2: Show strongest zones
         print("\n" + "-"*60)
@@ -470,7 +487,7 @@ def main():
         
         for zone in nearby[:5]:
             distance = abs(zone.price_level - current_price) / current_price * 100
-            print(f"   • {zone.zone_type.value} @ {zone.price_level:.5f} "
+            print(f"  • {zone.zone_type.value} @ {zone.price_level:.5f} "
                   f"(distance: {distance:.2f}%)")
         
         print("\n" + "="*60)
