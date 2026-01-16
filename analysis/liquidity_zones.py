@@ -6,9 +6,6 @@ Detects institutional liquidity zones:
 2. Stop-Hunt Zones (fake breakouts + reversal)
 3. Fair Value Gaps (FVG) - 3-candle imbalances
 4. Order Blocks
-
-These zones represent areas where institutions hunt retail stops
-and where price is likely to reverse or react strongly.
 """
 
 import pandas as pd
@@ -27,7 +24,6 @@ from core.exceptions import LiquidityZoneError
 from core.config import config
 from data import MarketDataFetcher
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,11 +32,11 @@ class LiquidityZone:
     """Represents a liquidity zone"""
     zone_type: LiquidityZoneType
     price_level: float
-    price_range: Tuple[float, float]  # (low, high)
-    strength: int  # 1-5, higher is stronger
-    touches: int  # Number of times price touched this level
+    price_range: Tuple[float, float]
+    strength: int
+    touches: int
     time_detected: datetime
-    candle_index: int  # Index in the dataframe
+    candle_index: int
     
     def to_dict(self) -> Dict:
         """Convert to dictionary"""
@@ -61,64 +57,33 @@ class LiquidityZone:
 
 
 class LiquidityZoneDetector:
-    """
-    Advanced Liquidity Zone Detector
-    
-    Identifies key liquidity zones where institutions:
-    1. Hunt stop losses (Equal Highs/Lows)
-    2. Fake breakouts and reverse (Stop-Hunt zones)
-    3. Leave imbalances (Fair Value Gaps)
-    4. Place large orders (Order Blocks)
-    
-    These zones are high-probability reversal or continuation areas.
-    """
+    """Advanced Liquidity Zone Detector"""
     
     def __init__(self):
         self.fetcher = MarketDataFetcher()
-        
-        # Configuration from config
         self.equal_level_tolerance = config.EQUAL_LEVEL_TOLERANCE
         self.min_touches = config.MIN_TOUCHES
-        self.swing_detection_window = 5  # Look 5 candles left/right for swing points
+        self.swing_detection_window = 5
     
-    def detect_all_zones(
-        self,
-        pair: CurrencyPair,
-        timeframe: TimeFrame
-    ) -> List[LiquidityZone]:
-        """
-        Detect all types of liquidity zones
-        
-        Args:
-            pair: Currency pair
-            timeframe: Timeframe (M15 or M30 recommended)
-            
-        Returns:
-            List of detected liquidity zones
-        """
+    def detect_all_zones(self, pair: CurrencyPair, timeframe: TimeFrame) -> List[LiquidityZone]:
+        """Detect all types of liquidity zones"""
         logger.info(f"Detecting liquidity zones for {pair.value} on {timeframe.value}")
         
         try:
-            # Fetch data
             df = self.fetcher.fetch_data(pair, timeframe)
-            
             zones = []
             
-            # 1. Equal Highs/Lows
             equal_highs = self._detect_equal_highs(df)
             equal_lows = self._detect_equal_lows(df)
             zones.extend(equal_highs)
             zones.extend(equal_lows)
             
-            # 2. Stop-Hunt Zones
             stop_hunts = self._detect_stop_hunts(df)
             zones.extend(stop_hunts)
             
-            # 3. Fair Value Gaps
             fvgs = self._detect_fair_value_gaps(df)
             zones.extend(fvgs)
             
-            # Sort by strength (strongest first)
             zones.sort(key=lambda z: z.strength, reverse=True)
             
             logger.info(f"✅ Detected {len(zones)} liquidity zones "
@@ -129,378 +94,20 @@ class LiquidityZoneDetector:
             
         except Exception as e:
             logger.error(f"Liquidity zone detection failed: {e}")
-            raise LiquidityZoneError(
-                pair=pair.value,
-                zone_type="all",
-                reason=str(e)
-            )
+            raise LiquidityZoneError(pair=pair.value, zone_type="all", reason=str(e))
     
-    def _detect_equal_highs(
-        self,
-        data: pd.DataFrame,
-        tolerance: float = None
-    ) -> List[LiquidityZone]:
-        """
-        Detect Equal Highs (resistance with multiple touches)
-        
-        Equal Highs = Multiple swing highs at approximately same level
-        """
+    def _detect_equal_highs(self, data: pd.DataFrame, tolerance: float = None) -> List[LiquidityZone]:
+        """Detect Equal Highs"""
         if tolerance is None:
             tolerance = self.equal_level_tolerance
         
         zones = []
         
-        # Find swing highs (local maxima)
         swing_highs = data[data['high'] == data['high'].rolling(
-            window=self.swing_detection_window, 
-            center=True
-        ).max()].copy()
+            window=self.swing_detection_window, center=True).max()].copy()
         
         if len(swing_highs) < 2:
             return zones
         
-        # Group nearby swing highs
-        swing_highs = swing_highs.reset_index()
+        swing_highs_list = [(idx, row['high']) for idx, row in swing_highs.iterrows()]
         processed = set()
-        
-        for i in range(len(swing_highs) - 1):
-            if i in processed:
-                continue
-            
-            current_high = swing_highs.iloc[i]['high']
-            current_idx = swing_highs.iloc[i]['time']
-            
-            # Find all swing highs within tolerance
-            similar_highs = []
-            similar_indices = []
-            
-            for j in range(i, len(swing_highs)):
-                if j in processed:
-                    continue
-                
-                compare_high = swing_highs.iloc[j]['high']
-                
-                if abs(compare_high - current_high) / current_high <= tolerance:
-                    similar_highs.append(compare_high)
-                    similar_indices.append(swing_highs.iloc[j]['time'])
-                    processed.add(j)
-            
-            # If we found multiple touches at same level
-            if len(similar_highs) >= self.min_touches:
-                avg_level = sum(similar_highs) / len(similar_highs)
-                
-                zone = LiquidityZone(
-                    zone_type=LiquidityZoneType.EQUAL_HIGHS,
-                    price_level=avg_level,
-                    price_range=(min(similar_highs), max(similar_highs)),
-                    strength=min(len(similar_highs), 5),
-                    touches=len(similar_highs),
-                    time_detected=current_idx,
-                    candle_index=int(data.index.get_loc(current_idx))
-                )
-                
-                zones.append(zone)
-                logger.debug(f"Equal High detected @ {avg_level:.5f} ({len(similar_highs)} touches)")
-        
-        return zones
-    
-    def _detect_equal_lows(
-        self,
-        data: pd.DataFrame,
-        tolerance: float = None
-    ) -> List[LiquidityZone]:
-        """
-        Detect Equal Lows (support with multiple touches)
-        
-        Equal Lows = Multiple swing lows at approximately same level
-        """
-        if tolerance is None:
-            tolerance = self.equal_level_tolerance
-        
-        zones = []
-        
-        # Find swing lows (local minima)
-        swing_lows = data[data['low'] == data['low'].rolling(
-            window=self.swing_detection_window,
-            center=True
-        ).min()].copy()
-        
-        if len(swing_lows) < 2:
-            return zones
-        
-        # Group nearby swing lows
-        swing_lows = swing_lows.reset_index()
-        processed = set()
-        
-        for i in range(len(swing_lows) - 1):
-            if i in processed:
-                continue
-            
-            current_low = swing_lows.iloc[i]['low']
-            current_idx = swing_lows.iloc[i]['time']
-            
-            # Find all swing lows within tolerance
-            similar_lows = []
-            similar_indices = []
-            
-            for j in range(i, len(swing_lows)):
-                if j in processed:
-                    continue
-                
-                compare_low = swing_lows.iloc[j]['low']
-                
-                if abs(compare_low - current_low) / current_low <= tolerance:
-                    similar_lows.append(compare_low)
-                    similar_indices.append(swing_lows.iloc[j]['time'])
-                    processed.add(j)
-            
-            # If we found multiple touches at same level
-            if len(similar_lows) >= self.min_touches:
-                avg_level = sum(similar_lows) / len(similar_lows)
-                
-                zone = LiquidityZone(
-                    zone_type=LiquidityZoneType.EQUAL_LOWS,
-                    price_level=avg_level,
-                    price_range=(min(similar_lows), max(similar_lows)),
-                    strength=min(len(similar_lows), 5),
-                    touches=len(similar_lows),
-                    time_detected=current_idx,
-                    candle_index=int(data.index.get_loc(current_idx))
-                )
-                
-                zones.append(zone)
-                logger.debug(f"Equal Low detected @ {avg_level:.5f} ({len(similar_lows)} touches)")
-        
-        return zones
-    
-    def _detect_stop_hunts(self, df: pd.DataFrame) -> List[LiquidityZone]:
-        """
-        Detect Stop-Hunt Zones
-        
-        Stop-Hunt = Price spikes through a level then quickly reverses
-        Pattern: Break → Immediate reversal → Close back inside
-        
-        Buy Stop-Hunt: Spike above resistance → drop
-        Sell Stop-Hunt: Spike below support → rally
-        """
-        zones = []
-        lookback = 20
-        
-        for i in range(lookback, len(df) - 1):
-            candle = df.iloc[i]
-            prev_candle = df.iloc[i-1]
-            next_candle = df.iloc[i+1]
-            
-            # Recent high/low
-            recent_high = df.iloc[i-lookback:i]['high'].max()
-            recent_low = df.iloc[i-lookback:i]['low'].min()
-            
-            # Buy Stop-Hunt (spike down, then up)
-            if (candle['low'] < recent_low and  # Broke below recent low
-                candle['close'] > candle['open'] and  # But closed bullish
-                next_candle['close'] > candle['close']):  # Continued up
-                
-                zone = LiquidityZone(
-                    zone_type=LiquidityZoneType.STOP_HUNT_BUY,
-                    price_level=candle['low'],
-                    price_range=(candle['low'], candle['low'] * 1.001),
-                    strength=4,
-                    touches=1,
-                    time_detected=candle.name,
-                    candle_index=i
-                )
-                zones.append(zone)
-            
-            # Sell Stop-Hunt (spike up, then down)
-            elif (candle['high'] > recent_high and  # Broke above recent high
-                  candle['close'] < candle['open'] and  # But closed bearish
-                  next_candle['close'] < candle['close']):  # Continued down
-                
-                zone = LiquidityZone(
-                    zone_type=LiquidityZoneType.STOP_HUNT_SELL,
-                    price_level=candle['high'],
-                    price_range=(candle['high'] * 0.999, candle['high']),
-                    strength=4,
-                    touches=1,
-                    time_detected=candle.name,
-                    candle_index=i
-                )
-                zones.append(zone)
-        
-        logger.debug(f"Found {len(zones)} Stop-Hunt zones")
-        return zones
-    
-    def _detect_fair_value_gaps(self, df: pd.DataFrame) -> List[LiquidityZone]:
-        """
-        Detect Fair Value Gaps (FVG)
-        
-        FVG = 3-candle pattern with a gap (imbalance)
-        
-        Bullish FVG:
-        - Candle 1 high < Candle 3 low
-        - Gap between = unfilled area
-        
-        Bearish FVG:
-        - Candle 1 low > Candle 3 high
-        - Gap between = unfilled area
-        """
-        zones = []
-        min_gap_size = config.FVG_MIN_SIZE
-        
-        for i in range(2, len(df)):
-            candle1 = df.iloc[i-2]
-            candle2 = df.iloc[i-1]
-            candle3 = df.iloc[i]
-            
-            # Bullish FVG (gap between candle1.high and candle3.low)
-            if candle1['high'] < candle3['low']:
-                gap_size = (candle3['low'] - candle1['high']) / candle1['high']
-                
-                if gap_size >= min_gap_size:
-                    zone = LiquidityZone(
-                        zone_type=LiquidityZoneType.FAIR_VALUE_GAP_BULLISH,
-                        price_level=(candle1['high'] + candle3['low']) / 2,
-                        price_range=(candle1['high'], candle3['low']),
-                        strength=3,
-                        touches=0,
-                        time_detected=candle3.name,
-                        candle_index=i
-                    )
-                    zones.append(zone)
-            
-            # Bearish FVG (gap between candle1.low and candle3.high)
-            elif candle1['low'] > candle3['high']:
-                gap_size = (candle1['low'] - candle3['high']) / candle3['high']
-                
-                if gap_size >= min_gap_size:
-                    zone = LiquidityZone(
-                        zone_type=LiquidityZoneType.FAIR_VALUE_GAP_BEARISH,
-                        price_level=(candle1['low'] + candle3['high']) / 2,
-                        price_range=(candle3['high'], candle1['low']),
-                        strength=3,
-                        touches=0,
-                        time_detected=candle3.name,
-                        candle_index=i
-                    )
-                    zones.append(zone)
-        
-        logger.debug(f"Found {len(zones)} Fair Value Gap zones")
-        return zones
-    
-    def get_zones_near_price(
-        self,
-        zones: List[LiquidityZone],
-        current_price: float,
-        distance_pct: float = 0.5
-    ) -> List[LiquidityZone]:
-        """
-        Filter zones that are near current price
-        
-        Args:
-            zones: All detected zones
-            current_price: Current market price
-            distance_pct: Maximum distance as percentage (0.5 = 0.5%)
-            
-        Returns:
-            List of zones within distance
-        """
-        nearby_zones = []
-        
-        for zone in zones:
-            distance = abs(zone.price_level - current_price) / current_price
-            
-            if distance <= distance_pct / 100:
-                nearby_zones.append(zone)
-        
-        # Sort by distance (closest first)
-        nearby_zones.sort(key=lambda z: abs(z.price_level - current_price))
-        
-        logger.debug(f"Found {len(nearby_zones)} zones within {distance_pct}% of price")
-        return nearby_zones
-    
-    def get_strongest_zones(
-        self,
-        zones: List[LiquidityZone],
-        count: int = 5
-    ) -> List[LiquidityZone]:
-        """Get the strongest N zones"""
-        return sorted(zones, key=lambda z: z.strength, reverse=True)[:count]
-
-
-def main():
-    """Test the Liquidity Zone Detector"""
-    
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    print("\n" + "="*60)
-    print("LIQUIDITY ZONE DETECTOR TEST")
-    print("="*60 + "\n")
-    
-    try:
-        detector = LiquidityZoneDetector()
-        
-        # Test 1: Detect all zones for GBP/USD M15
-        print("Test 1: Detecting all liquidity zones for GBP/USD (M15)...")
-        zones = detector.detect_all_zones(CurrencyPair.GBP_USD, TimeFrame.M15)
-        
-        print(f"✅ Detected {len(zones)} total liquidity zones\n")
-        
-        # Count by type
-        zone_counts = {}
-        for zone in zones:
-            zone_type = zone.zone_type.value
-            zone_counts[zone_type] = zone_counts.get(zone_type, 0) + 1
-        
-        print("Zones by type:")
-        for zone_type, count in zone_counts.items():
-            print(f"  • {zone_type}: {count}")
-        
-        # Test 2: Show strongest zones
-        print("\n" + "-"*60)
-        print("Test 2: Top 5 strongest zones:\n")
-        
-        strongest = detector.get_strongest_zones(zones, count=5)
-        
-        for i, zone in enumerate(strongest, 1):
-            print(f"{i}. {zone.zone_type.value}")
-            print(f"   Level: {zone.price_level:.5f}")
-            print(f"   Range: {zone.price_range[0]:.5f} - {zone.price_range[1]:.5f}")
-            print(f"   Strength: {zone.strength}/5")
-            print(f"   Touches: {zone.touches}")
-            print()
-        
-        # Test 3: Get zones near current price
-        print("-"*60)
-        print("Test 3: Zones near current price (within 0.3%)...\n")
-        
-        # Get current price
-        fetcher = MarketDataFetcher()
-        current_price = fetcher.get_current_price(CurrencyPair.GBP_USD)
-        
-        nearby = detector.get_zones_near_price(zones, current_price, distance_pct=0.3)
-        
-        print(f"Current price: {current_price:.5f}")
-        print(f"Found {len(nearby)} nearby zones:\n")
-        
-        for zone in nearby[:5]:
-            distance = abs(zone.price_level - current_price) / current_price * 100
-            print(f"  • {zone.zone_type.value} @ {zone.price_level:.5f} "
-                  f"(distance: {distance:.2f}%)")
-        
-        print("\n" + "="*60)
-        print("✅ LIQUIDITY ZONE DETECTOR TEST COMPLETE!")
-        print("="*60 + "\n")
-        
-    except Exception as e:
-        print(f"\n❌ ERROR: {e}")
-        logger.exception("Test failed")
-        return 1
-    
-    return 0
-
-
-if __name__ == "__main__":
-    exit(main())
