@@ -1,11 +1,6 @@
+@"
 """
 Liquidity Zone Detection Module
-
-Detects institutional liquidity zones:
-1. Equal Highs / Equal Lows
-2. Stop-Hunt Zones (fake breakouts + reversal)
-3. Fair Value Gaps (FVG) - 3-candle imbalances
-4. Order Blocks
 """
 
 import pandas as pd
@@ -29,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LiquidityZone:
-    """Represents a liquidity zone"""
     zone_type: LiquidityZoneType
     price_level: float
     price_range: Tuple[float, float]
@@ -39,7 +33,6 @@ class LiquidityZone:
     candle_index: int
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary"""
         return {
             'type': self.zone_type.value,
             'price_level': round(self.price_level, 5),
@@ -51,14 +44,11 @@ class LiquidityZone:
         }
     
     def is_near_price(self, current_price: float, tolerance: float = 0.001) -> bool:
-        """Check if current price is near this zone"""
         return (self.price_range[0] * (1 - tolerance) <= current_price <= 
                 self.price_range[1] * (1 + tolerance))
 
 
 class LiquidityZoneDetector:
-    """Advanced Liquidity Zone Detector"""
-    
     def __init__(self):
         self.fetcher = MarketDataFetcher()
         self.equal_level_tolerance = config.EQUAL_LEVEL_TOLERANCE
@@ -66,8 +56,7 @@ class LiquidityZoneDetector:
         self.swing_detection_window = 5
     
     def detect_all_zones(self, pair: CurrencyPair, timeframe: TimeFrame) -> List[LiquidityZone]:
-        """Detect all types of liquidity zones"""
-        logger.info(f"Detecting liquidity zones for {pair.value} on {timeframe.value}")
+        logger.info(f'Detecting liquidity zones for {pair.value} on {timeframe.value}')
         
         try:
             df = self.fetcher.fetch_data(pair, timeframe)
@@ -86,18 +75,15 @@ class LiquidityZoneDetector:
             
             zones.sort(key=lambda z: z.strength, reverse=True)
             
-            logger.info(f"✅ Detected {len(zones)} liquidity zones "
-                       f"(EH/EL: {len(equal_highs) + len(equal_lows)}, "
-                       f"Stop-Hunt: {len(stop_hunts)}, FVG: {len(fvgs)})")
+            logger.info(f'Detected {len(zones)} liquidity zones')
             
             return zones
             
         except Exception as e:
-            logger.error(f"Liquidity zone detection failed: {e}")
-            raise LiquidityZoneError(pair=pair.value, zone_type="all", reason=str(e))
+            logger.error(f'Liquidity zone detection failed: {e}')
+            raise LiquidityZoneError(pair=pair.value, zone_type='all', reason=str(e))
     
     def _detect_equal_highs(self, data: pd.DataFrame, tolerance: float = None) -> List[LiquidityZone]:
-        """Detect Equal Highs"""
         if tolerance is None:
             tolerance = self.equal_level_tolerance
         
@@ -111,3 +97,37 @@ class LiquidityZoneDetector:
         
         swing_highs_list = [(idx, row['high']) for idx, row in swing_highs.iterrows()]
         processed = set()
+        
+        for i, (current_idx, current_high) in enumerate(swing_highs_list):
+            if i in processed:
+                continue
+            
+            similar_highs = []
+            similar_indices = []
+            
+            for j, (compare_idx, compare_high) in enumerate(swing_highs_list):
+                if j in processed:
+                    continue
+                
+                if abs(compare_high - current_high) / current_high <= tolerance:
+                    similar_highs.append(compare_high)
+                    similar_indices.append(compare_idx)
+                    processed.add(j)
+            
+            if len(similar_highs) >= self.min_touches:
+                avg_level = sum(similar_highs) / len(similar_highs)
+                
+                zone = LiquidityZone(
+                    zone_type=LiquidityZoneType.EQUAL_HIGHS,
+                    price_level=avg_level,
+                    price_range=(min(similar_highs), max(similar_highs)),
+                    strength=min(len(similar_highs), 5),
+                    touches=len(similar_highs),
+                    time_detected=current_idx,
+                    candle_index=data.index.get_loc(current_idx)
+                )
+                
+                zones.append(zone)
+        
+        return zones
+"@ | Set-Content -Path analysis/liquidity_zones.py -Encoding UTF8
